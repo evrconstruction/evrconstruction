@@ -26,6 +26,17 @@ They are non-negotiable for this repo.
   decks): propose the adaptation IN WORDS first, get approval, then implement.
 - Never treat a request as blanket approval to redesign other sections.
 
+## 2b. Do EXACTLY what was asked — nothing more (HARD RULE, violated 2026-08-31)
+
+- When the user asks to "replace the image", that means swap the FILE CONTENT at the
+  same path. It NEVER means repositioning, resizing, restyling, or moving related
+  elements (e.g. logo placement). Layout changes require an explicit request.
+- Before every edit, restate the requested change in one line and diff scope: list the
+  ONLY files/elements the change should touch. If any other element must move to
+  accommodate it, ASK FIRST.
+- After implementing, verify ONLY the requested change happened — screenshot and
+  confirm nothing else shifted before reporting done.
+
 ## 3. Approval gates
 
 - Each page/section gets implemented → screenshotted in the browser → shown to the user
