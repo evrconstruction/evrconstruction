@@ -172,7 +172,7 @@ export default function HomePage() {
               <div className="mt-6 overflow-hidden rounded-sm border border-white/20">
                 <iframe
                   title="EVR Construction service area — East Tennessee, TN"
-                  src="https://www.google.com/maps/embed/v1/place?key=AIzaSyD8KNrMxpVkc3bxqamNlkN4LZp6kqohlS8&q=East+Tennessee,+TN&zoom=8"
+                  src="https://maps.google.com/maps?q=East+Tennessee,+TN&z=8&output=embed"
                   className="h-64 w-full border-none"
                   loading="lazy"
                   allowFullScreen
