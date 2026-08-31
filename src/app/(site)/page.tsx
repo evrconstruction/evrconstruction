@@ -169,15 +169,15 @@ export default function HomePage() {
               <p className="mt-4 text-sm leading-7 text-white/70">
                 EVR Construction proudly serves communities across {SITE.region}.
               </p>
-              <div className="mt-6 flex flex-wrap gap-2.5">
-                {SITE.serviceAreas.map((area) => (
-                  <span
-                    key={area}
-                    className="rounded-sm border border-white/20 px-3.5 py-1.5 text-xs text-white/85"
-                  >
-                    {area}
-                  </span>
-                ))}
+              <div className="mt-6 overflow-hidden rounded-sm border border-white/20">
+                <iframe
+                  title="EVR Construction service area — East Tennessee, TN"
+                  src="https://www.google.com/maps/embed/v1/place?key=AIzaSyD8KNrMxpVkc3bxqamNlkN4LZp6kqohlS8&q=East+Tennessee,+TN&zoom=8"
+                  className="h-64 w-full border-none"
+                  loading="lazy"
+                  allowFullScreen
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
               </div>
               <a
                 href={SITE.directionsUrl}
