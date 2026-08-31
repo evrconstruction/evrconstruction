@@ -10,9 +10,9 @@ export function Footer() {
           <Image
             src="/brand/logo.png"
             alt={`${SITE.name} logo`}
-            width={260}
-            height={173}
-            className="h-24 w-auto"
+            width={320}
+            height={213}
+            className="h-28 w-auto"
           />
           <p className="mt-4 max-w-xs text-sm leading-6 text-white/70">
             Specializing in decks, gazebos, railings, and all types of
