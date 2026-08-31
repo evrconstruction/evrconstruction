@@ -14,9 +14,21 @@ export function ServiceAreaMap() {
     if (!container) return;
 
     let map: import("leaflet").Map | undefined;
+    let cancelled = false;
 
     (async () => {
       const L = (await import("leaflet")).default;
+      if (cancelled) return;
+      // Fix default icon paths (bundlers lose Leaflet's relative image URLs)
+      delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)
+        ._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+        iconRetinaUrl:
+          "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+        shadowUrl:
+          "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+      });
       map = L.map(container, {
         center: CENTER,
         zoom: ZOOM,
@@ -32,6 +44,7 @@ export function ServiceAreaMap() {
     })();
 
     return () => {
+      cancelled = true;
       map?.remove();
     };
   }, []);
