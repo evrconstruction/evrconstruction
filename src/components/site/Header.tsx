@@ -10,9 +10,9 @@ export function Header() {
           <Image
             src="/brand/logo.png"
             alt="EVR Construction LLC logo"
-            width={140}
-            height={91}
-            className="h-11 w-auto"
+            width={200}
+            height={133}
+            className="h-16 w-auto"
             priority
           />
           <span className="sr-only">{SITE.name}</span>
