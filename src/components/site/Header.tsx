@@ -8,7 +8,7 @@ export function Header() {
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center">
           <Image
-            src="/brand/logo-white.png"
+            src="/brand/logo.png"
             alt="EVR Construction LLC logo"
             width={140}
             height={91}
