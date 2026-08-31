@@ -41,42 +41,54 @@ const FAQS = [
 export default function HomePage() {
   return (
     <div>
-      {/* Hero */}
-      <section className="relative flex min-h-[560px] items-end overflow-hidden bg-charcoal-deep">
-        <Image
-          src="/images/hero.jpg"
-          alt="EVR Construction crew at work on a carpentry project"
-          fill
-          priority
-          className="object-cover opacity-60"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-charcoal-deep via-charcoal-deep/40 to-transparent" />
-        <div className="relative mx-auto w-full max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
-          <p className="font-heading text-sm font-semibold uppercase tracking-[0.25em] text-amber-brand">
-            Licensed &amp; Insured · Free Estimates
-          </p>
-          <h1 className="mt-4 max-w-2xl font-heading text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
-            Decks, Gazebos &amp; Carpentry,{" "}
-            <span className="text-amber-brand">Built to Last.</span>
-          </h1>
-          <p className="mt-5 max-w-xl text-base leading-7 text-white/80">
-            High-quality decks, gazebos, railings, and all types of carpentry.
-            Craftsmanship and attention to detail — that&apos;s what has kept
-            EVR trusted across East Tennessee for years.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center gap-4">
-            <Link
-              href="/contact"
-              className="inline-flex items-center rounded-sm bg-amber-brand px-7 py-3.5 font-heading text-sm font-semibold text-charcoal-deep transition-colors hover:bg-amber-dark"
-            >
-              Book a Free Consultation
-            </Link>
-            <Link
-              href="/projects"
-              className="inline-flex items-center rounded-sm border border-white/40 px-7 py-3.5 font-heading text-sm font-semibold text-white transition-colors hover:border-amber-brand hover:text-amber-brand"
-            >
-              View Projects
-            </Link>
+      {/* Hero — text left, portrait image right, white fade into the photo */}
+      <section className="relative overflow-hidden bg-white">
+        <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 pt-12 pb-0 sm:px-6 lg:grid-cols-[1fr_1fr] lg:gap-4 lg:px-8">
+          {/* Text column */}
+          <div className="relative z-10 max-w-xl pb-16 lg:pb-24">
+            <p className="font-heading text-sm font-semibold uppercase tracking-[0.25em] text-amber-dark">
+              Licensed &amp; Insured · Free Estimates
+            </p>
+            <h1 className="mt-4 font-heading text-4xl font-bold leading-tight text-charcoal sm:text-5xl">
+              Decks, Gazebos &amp; Carpentry,{" "}
+              <span className="text-amber-dark">Built to Last.</span>
+            </h1>
+            <p className="mt-5 text-base leading-7 text-muted">
+              High-quality decks, gazebos, railings, and all types of
+              carpentry. Craftsmanship and attention to detail —
+              that&apos;s what has kept EVR trusted across East Tennessee for
+              years.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <Link
+                href="/contact"
+                className="inline-flex items-center rounded-sm bg-amber-brand px-7 py-3.5 font-heading text-sm font-semibold text-charcoal-deep transition-colors hover:bg-amber-dark"
+              >
+                Book a Free Consultation
+              </Link>
+              <Link
+                href="/projects"
+                className="inline-flex items-center rounded-sm border-2 border-charcoal px-7 py-3 font-heading text-sm font-semibold text-charcoal transition-colors hover:border-amber-brand hover:text-amber-dark"
+              >
+                View Projects
+              </Link>
+            </div>
+          </div>
+
+          {/* Image column — portrait photo, fading into white on its left edge */}
+          <div className="relative h-[420px] sm:h-[520px] lg:h-[640px]">
+            <Image
+              src="/images/hero.jpg"
+              alt="Custom wooden deck built by EVR Construction"
+              fill
+              priority
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              className="object-cover object-top"
+            />
+            {/* White fade: left edge blends into page background */}
+            <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-white via-white/60 to-transparent lg:w-2/3" />
+            {/* White fade: bottom edge blends into next section */}
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent" />
           </div>
         </div>
       </section>
