@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { SITE } from "@/lib/site";
+import { ServiceAreaMap } from "@/components/site/ServiceAreaMap";
 import { ServicesSection } from "@/components/site/ServicesSection";
 import { NoJobTooBigSection } from "@/components/site/NoJobTooBigSection";
 
@@ -170,14 +171,7 @@ export default function HomePage() {
                 EVR Construction proudly serves communities across {SITE.region}.
               </p>
               <div className="mt-6 overflow-hidden rounded-sm border border-white/20">
-                <iframe
-                  title="EVR Construction service area — East Tennessee, TN"
-                  src="https://maps.google.com/maps?q=East+Tennessee,+TN&z=8&output=embed"
-                  className="h-64 w-full border-none"
-                  loading="lazy"
-                  allowFullScreen
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
+                <ServiceAreaMap />
               </div>
               <a
                 href={SITE.directionsUrl}
