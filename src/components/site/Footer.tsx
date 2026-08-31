@@ -8,11 +8,11 @@ export function Footer() {
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-3 lg:px-8">
         <div>
           <Image
-            src="/brand/logo.png"
+            src="/brand/logo-white.png"
             alt={`${SITE.name} logo`}
-            width={180}
-            height={60}
-            className="h-16 w-auto bg-white/95 p-2"
+            width={200}
+            height={130}
+            className="h-20 w-auto"
           />
           <p className="mt-4 max-w-xs text-sm leading-6 text-white/70">
             Specializing in decks, gazebos, railings, and all types of
