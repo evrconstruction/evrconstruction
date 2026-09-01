@@ -5,7 +5,7 @@ import { NAV_LINKS, SITE } from "@/lib/site";
 export function Footer() {
   return (
     <footer className="bg-charcoal-deep text-white">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-3 lg:px-8">
+      <div className="mx-auto grid max-w-7xl justify-items-center gap-10 px-4 py-14 text-center sm:px-6 md:grid-cols-3 md:justify-items-start md:text-left lg:px-8">
         <div>
           <Image
             src="/brand/logo.png"
@@ -24,7 +24,7 @@ export function Footer() {
           <h2 className="font-heading text-sm font-semibold uppercase tracking-wider text-amber-brand">
             Explore
           </h2>
-          <ul className="mt-4 flex flex-col gap-2.5">
+          <ul className="mt-4 flex flex-col items-center gap-2.5 md:items-start">
             {NAV_LINKS.map((link) => (
               <li key={link.href}>
                 <Link
@@ -42,7 +42,7 @@ export function Footer() {
           <h2 className="font-heading text-sm font-semibold uppercase tracking-wider text-amber-brand">
             Get in touch
           </h2>
-          <ul className="mt-4 flex flex-col gap-2.5 text-sm text-white/70">
+          <ul className="mt-4 flex flex-col items-center gap-2.5 md:items-start">
             <li className="flex items-center gap-2.5">
               <MapPinIcon />
               <span>Knoxville, TN</span>
