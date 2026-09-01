@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { SITE } from "@/lib/site";
-import { ServiceAreaMap } from "@/components/site/ServiceAreaMap";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -61,7 +60,16 @@ export default function ContactPage() {
               Proudly serving communities across {SITE.region}.
             </p>
             <div className="mt-4 overflow-hidden rounded-sm border border-gray-200">
-              <ServiceAreaMap />
+              <iframe
+                src="https://maps.google.com/maps?q=East+Tennessee,+TN&t=m&z=8&output=embed&iwloc=near"
+                width="100%"
+                height="300"
+                className="border-0"
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="EVR Construction — East Tennessee Service Area"
+              ></iframe>
             </div>
             <a
               href={SITE.directionsUrl}
