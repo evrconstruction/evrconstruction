@@ -49,7 +49,7 @@ export function Footer() {
             </li>
             <li className="flex items-center gap-2.5">
               <GlobeIcon />
-              <span className="italic">Atendiendo Knoxville, TN y East Tennessee</span>
+              <span className="italic">Serving Knoxville, TN and East Tennessee</span>
             </li>
             <li className="flex items-center gap-2.5">
               <PhoneIcon />
