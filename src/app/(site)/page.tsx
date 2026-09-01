@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { SITE } from "@/lib/site";
-import { ServiceAreaMap } from "@/components/site/ServiceAreaMap";
 import { ServicesSection } from "@/components/site/ServicesSection";
 import { NoJobTooBigSection } from "@/components/site/NoJobTooBigSection";
 
@@ -170,8 +169,15 @@ export default function HomePage() {
               <p className="mt-4 text-sm leading-7 text-white/70">
                 EVR Construction proudly serves communities across {SITE.region}.
               </p>
-              <div className="mt-6 overflow-hidden rounded-sm border border-white/20">
-                <ServiceAreaMap />
+              <div className="mt-6 flex flex-wrap gap-2.5">
+                {SITE.serviceAreas.map((area) => (
+                  <span
+                    key={area}
+                    className="rounded-sm border border-white/20 px-3.5 py-1.5 text-xs text-white/85"
+                  >
+                    {area}
+                  </span>
+                ))}
               </div>
               <a
                 href={SITE.directionsUrl}
