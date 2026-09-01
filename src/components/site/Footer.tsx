@@ -12,7 +12,7 @@ export function Footer() {
             alt={`${SITE.name} logo`}
             width={380}
             height={253}
-            className="h-32 w-auto"
+            className="mx-auto h-32 w-auto md:mx-0"
           />
           <p className="mt-4 max-w-xs text-sm leading-6 text-white/70">
             Specializing in decks, gazebos, railings, and all types of
