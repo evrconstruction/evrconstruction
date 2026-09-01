@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SITE } from "@/lib/site";
+import { ServiceAreaMap } from "@/components/site/ServiceAreaMap";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -57,9 +58,11 @@ export default function ContactPage() {
               Service Areas
             </h2>
             <p className="mt-3 text-sm leading-6 text-muted">
-              {SITE.serviceAreas.join(", ")}, and surrounding areas in{" "}
-              {SITE.region}.
+              Proudly serving communities across {SITE.region}.
             </p>
+            <div className="mt-4 overflow-hidden rounded-sm border border-gray-200">
+              <ServiceAreaMap />
+            </div>
             <a
               href={SITE.directionsUrl}
               className="mt-4 inline-flex font-heading text-sm font-semibold text-charcoal underline decoration-amber-brand decoration-2 underline-offset-4 hover:text-amber-dark"
