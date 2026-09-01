@@ -75,14 +75,14 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Image column — portrait photo, fading into white on its left edge */}
-          <div className="relative h-[420px] sm:h-[520px] lg:h-[640px]">
+          {/* Image column — bleeds to the right edge of the viewport, fading into white on its left edge */}
+          <div className="relative h-[420px] sm:h-[520px] lg:h-[640px] lg:-mr-4 sm:-mr-6 lg:-mr-8">
             <Image
               src="/images/hero.jpg"
               alt="Custom wooden deck built by EVR Construction"
               fill
               priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
+              sizes="(max-width: 1024px) 100vw, 60vw"
               className="object-cover object-top"
             />
             {/* White fade: left edge blends into page background */}
