@@ -86,58 +86,54 @@ export default function ContactPage() {
             Send a Message
           </h2>
           <form className="mt-5 flex flex-1 flex-col gap-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="flex flex-col gap-1.5">
-                <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
-                  First Name
-                </span>
-                <input
-                  type="text"
-                  name="firstName"
-                  required
-                  autoComplete="given-name"
-                  className="rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
-                  Last Name
-                </span>
-                <input
-                  type="text"
-                  name="lastName"
-                  required
-                  autoComplete="family-name"
-                  className="rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
-                />
-              </label>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="flex flex-col gap-1.5">
-                <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
-                  City / County
-                </span>
-                <input
-                  type="text"
-                  name="city"
-                  required
-                  autoComplete="address-level2"
-                  placeholder="e.g. Knoxville, Knox County"
-                  className="rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none placeholder:text-muted/50 focus:border-amber-brand"
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
-                  Phone
-                </span>
-                <input
-                  type="tel"
-                  name="phone"
-                  autoComplete="tel"
-                  className="rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
-                />
-              </label>
-            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
+                First Name
+              </span>
+              <input
+                type="text"
+                name="firstName"
+                required
+                autoComplete="given-name"
+                className="w-full rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
+                Last Name
+              </span>
+              <input
+                type="text"
+                name="lastName"
+                required
+                autoComplete="family-name"
+                className="w-full rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
+                City / County
+              </span>
+              <input
+                type="text"
+                name="city"
+                required
+                autoComplete="address-level2"
+                placeholder="e.g. Knoxville, Knox County"
+                className="w-full rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none placeholder:text-muted/50 focus:border-amber-brand"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
+                Phone
+              </span>
+              <input
+                type="tel"
+                name="phone"
+                autoComplete="tel"
+                className="w-full rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
+              />
+            </label>
             <label className="flex flex-col gap-1.5">
               <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
                 Email
@@ -146,18 +142,18 @@ export default function ContactPage() {
                 type="email"
                 name="email"
                 required
-                className="rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
+                autoComplete="email"
+                className="w-full rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
               />
             </label>
-            <label className="flex flex-col gap-1.5">
+            <label className="flex min-h-0 flex-1 flex-col gap-1.5">
               <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
                 Tell us about your project
               </span>
               <textarea
                 name="message"
-                rows={5}
                 required
-                className="min-h-28 flex-1 rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
+                className="min-h-32 w-full flex-1 resize-none rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
               />
             </label>
             <button
