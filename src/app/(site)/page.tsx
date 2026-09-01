@@ -41,8 +41,8 @@ const FAQS = [
 export default function HomePage() {
   return (
     <div>
-      {/* Hero — text left, portrait image right, white fade into the photo */}
-      <section className="relative overflow-hidden bg-white">
+      {/* Hero — text left, portrait image filling the full right side edge-to-edge */}
+      <section className="relative overflow-hidden bg-white lg:min-h-[680px]">
         <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 pt-12 pb-0 sm:px-6 lg:grid-cols-[1fr_1fr] lg:gap-4 lg:px-8">
           {/* Text column */}
           <div className="relative z-10 max-w-xl pb-16 lg:pb-24">
@@ -74,22 +74,22 @@ export default function HomePage() {
               </Link>
             </div>
           </div>
+        </div>
 
-          {/* Image column — bleeds to the right edge of the viewport, fading into white on its left edge */}
-          <div className="relative h-[420px] sm:h-[520px] lg:h-[640px] lg:-mr-4 sm:-mr-6 lg:-mr-8">
-            <Image
-              src="/images/hero.jpg"
-              alt="Custom wooden deck built by EVR Construction"
-              fill
-              priority
-              sizes="(max-width: 1024px) 100vw, 60vw"
-              className="object-cover object-top"
-            />
-            {/* White fade: left edge blends into page background */}
-            <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-white via-white/60 to-transparent lg:w-2/3" />
-            {/* White fade: bottom edge blends into next section */}
-            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent" />
-          </div>
+        {/* Full-bleed image: absolute right half, top-to-bottom of the section (desktop) */}
+        <div className="relative h-[420px] sm:h-[520px] lg:absolute lg:inset-y-0 lg:right-0 lg:h-auto lg:w-1/2">
+          <Image
+            src="/images/hero.jpg"
+            alt="Custom wooden deck built by EVR Construction"
+            fill
+            priority
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            className="object-cover object-top"
+          />
+          {/* White fade: left edge blends into page background */}
+          <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-white via-white/60 to-transparent lg:w-2/3" />
+          {/* White fade: bottom edge blends into next section (mobile only) */}
+          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent lg:hidden" />
         </div>
       </section>
 
