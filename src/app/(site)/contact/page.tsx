@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SITE } from "@/lib/site";
+import { ContactForm } from "@/components/site/ContactForm";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -80,93 +81,8 @@ export default function ContactPage() {
           </div>
         </div>
 
-        {/* Form (wired to backend in a later phase) */}
-        <div className="flex h-full flex-col rounded-sm border border-gray-100 bg-white p-7 shadow-sm">
-          <h2 className="font-heading text-lg font-bold text-charcoal">
-            Send a Message
-          </h2>
-          <form className="mt-5 flex flex-1 flex-col gap-4">
-            <label className="flex flex-col gap-1.5">
-              <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
-                First Name
-              </span>
-              <input
-                type="text"
-                name="firstName"
-                required
-                autoComplete="given-name"
-                className="w-full rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
-                Last Name
-              </span>
-              <input
-                type="text"
-                name="lastName"
-                required
-                autoComplete="family-name"
-                className="w-full rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
-                City / County
-              </span>
-              <input
-                type="text"
-                name="city"
-                required
-                autoComplete="address-level2"
-                placeholder="e.g. Knoxville, Knox County"
-                className="w-full rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none placeholder:text-muted/50 focus:border-amber-brand"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
-                Phone
-              </span>
-              <input
-                type="tel"
-                name="phone"
-                autoComplete="tel"
-                className="w-full rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
-                Email
-              </span>
-              <input
-                type="email"
-                name="email"
-                required
-                autoComplete="email"
-                className="w-full rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
-              />
-            </label>
-            <label className="flex min-h-0 flex-1 flex-col gap-1.5">
-              <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
-                Tell us about your project
-              </span>
-              <textarea
-                name="message"
-                required
-                className="min-h-32 w-full flex-1 resize-none rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
-              />
-            </label>
-            <button
-              type="submit"
-              className="inline-flex items-center justify-center rounded-sm bg-amber-brand px-7 py-3.5 font-heading text-sm font-semibold text-charcoal-deep transition-colors hover:bg-amber-dark"
-            >
-              Send Message
-            </button>
-            <p className="text-xs text-muted">
-              Free estimate · No obligation · We reply within one business day
-            </p>
-          </form>
-        </div>
+        {/* Form */}
+        <ContactForm />
       </section>
     </div>
   );

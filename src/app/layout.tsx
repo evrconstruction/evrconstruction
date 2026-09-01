@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Rubik, Open_Sans } from "next/font/google";
 import "./globals.css";
 
@@ -14,7 +14,16 @@ const openSans = Open_Sans({
   variable: "--font-open-sans",
 });
 
+export const SITE_URL = "https://evrconstructions.com";
+
+export const viewport: Viewport = {
+  themeColor: "#1f2521",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default:
       "EVR Construction LLC | Decks, Gazebos & Carpentry in Knoxville, TN",
@@ -22,6 +31,16 @@ export const metadata: Metadata = {
   },
   description:
     "Licensed & insured deck, gazebo, railing and carpentry contractor serving Knoxville, Farragut, Hardin Valley and East Tennessee. Free estimates.",
+  openGraph: {
+    type: "website",
+    siteName: "EVR Construction LLC",
+    locale: "en_US",
+    url: SITE_URL,
+    images: [{ url: "/images/hero.jpg", width: 1600, height: 1200, alt: "EVR Construction deck project" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

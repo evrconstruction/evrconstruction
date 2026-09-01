@@ -43,7 +43,7 @@ export default function HomePage() {
     <div>
       {/* Hero — text left, portrait image filling the full right side edge-to-edge */}
       <section className="relative overflow-hidden bg-white lg:min-h-[680px]">
-        <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 pt-12 pb-0 sm:px-6 lg:grid-cols-[1fr_1fr] lg:gap-4 lg:px-8">
+        <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 pt-12 pb-12 sm:px-6 sm:pb-8 lg:grid-cols-[1fr_1fr] lg:gap-4 lg:px-8 lg:pb-0">
           {/* Text column */}
           <div className="relative z-10 max-w-xl lg:pt-[110px]">
             <p className="font-heading text-sm font-semibold uppercase tracking-[0.25em] text-amber-dark">
@@ -86,8 +86,10 @@ export default function HomePage() {
             sizes="(max-width: 1024px) 100vw, 50vw"
             className="object-cover object-top"
           />
-          {/* White fade: left edge blends into page background */}
-          <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-white via-white/60 to-transparent lg:w-2/3" />
+          {/* White fade: top edge blends into the white section above (mobile only) */}
+          <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white to-transparent lg:hidden" />
+          {/* White fade: left edge blends into page background (desktop only) */}
+          <div className="absolute inset-y-0 left-0 hidden w-1/4 bg-gradient-to-r from-white via-white/60 to-transparent lg:block" />
           {/* White fade: bottom edge blends into next section (mobile only) */}
           <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent lg:hidden" />
         </div>
