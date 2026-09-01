@@ -26,7 +26,7 @@ export default function ContactPage() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8">
+      <section className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:items-stretch lg:px-8">
         {/* Phone options */}
         <div className="flex flex-col gap-6">
           <div className="rounded-sm border border-gray-100 bg-white p-7 shadow-sm">
@@ -81,11 +81,11 @@ export default function ContactPage() {
         </div>
 
         {/* Form (wired to backend in a later phase) */}
-        <div className="rounded-sm border border-gray-100 bg-white p-7 shadow-sm">
+        <div className="flex h-full flex-col rounded-sm border border-gray-100 bg-white p-7 shadow-sm">
           <h2 className="font-heading text-lg font-bold text-charcoal">
             Send a Message
           </h2>
-          <form className="mt-5 flex flex-col gap-4">
+          <form className="mt-5 flex flex-1 flex-col gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="flex flex-col gap-1.5">
                 <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
@@ -157,7 +157,7 @@ export default function ContactPage() {
                 name="message"
                 rows={5}
                 required
-                className="rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
+                className="min-h-28 flex-1 rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
               />
             </label>
             <button
