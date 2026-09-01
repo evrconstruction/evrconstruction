@@ -45,7 +45,7 @@ export default function HomePage() {
       <section className="relative overflow-hidden bg-white lg:min-h-[680px]">
         <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 pt-12 pb-0 sm:px-6 lg:grid-cols-[1fr_1fr] lg:gap-4 lg:px-8">
           {/* Text column */}
-          <div className="relative z-10 max-w-xl pb-16 lg:pb-24">
+          <div className="relative z-10 max-w-xl lg:pt-[110px]">
             <p className="font-heading text-sm font-semibold uppercase tracking-[0.25em] text-amber-dark">
               Licensed &amp; Insured · Free Estimates
             </p>
