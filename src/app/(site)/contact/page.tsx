@@ -81,13 +81,41 @@ export default function ContactPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="flex flex-col gap-1.5">
                 <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
-                  Name
+                  First Name
                 </span>
                 <input
                   type="text"
-                  name="name"
+                  name="firstName"
                   required
+                  autoComplete="given-name"
                   className="rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
+                  Last Name
+                </span>
+                <input
+                  type="text"
+                  name="lastName"
+                  required
+                  autoComplete="family-name"
+                  className="rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
+                />
+              </label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="flex flex-col gap-1.5">
+                <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
+                  City / County
+                </span>
+                <input
+                  type="text"
+                  name="city"
+                  required
+                  autoComplete="address-level2"
+                  placeholder="e.g. Knoxville, Knox County"
+                  className="rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none placeholder:text-muted/50 focus:border-amber-brand"
                 />
               </label>
               <label className="flex flex-col gap-1.5">
@@ -97,6 +125,7 @@ export default function ContactPage() {
                 <input
                   type="tel"
                   name="phone"
+                  autoComplete="tel"
                   className="rounded-sm border border-gray-200 px-3.5 py-2.5 text-sm text-charcoal outline-none focus:border-amber-brand"
                 />
               </label>
