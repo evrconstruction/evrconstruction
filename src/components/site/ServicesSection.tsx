@@ -75,22 +75,22 @@ function ServiceIcon({ icon }: { icon: Service["icon"] }) {
 export function ServicesSection() {
   return (
     <section className="bg-white py-20">
-      <div className="mx-auto grid max-w-7xl gap-x-12 gap-y-14 px-4 sm:px-6 md:grid-cols-2 lg:grid-cols-3 lg:px-8">
+      <div className="mx-auto grid max-w-7xl gap-x-12 gap-y-14 px-4 text-center sm:px-6 md:grid-cols-2 md:text-left lg:grid-cols-3 lg:px-8">
         {SERVICES.map((service) => (
-          <article key={service.title} className="flex flex-col gap-4">
+          <article key={service.title} className="mx-auto flex w-full max-w-sm flex-col items-center gap-4 md:mx-0 md:max-w-none md:items-start">
             <ServiceIcon icon={service.icon} />
             <div>
               <h3 className="font-heading text-base font-semibold text-charcoal">
                 {service.title}
               </h3>
-              <p className="mt-1.5 max-w-xs text-sm leading-6 text-muted">
+              <p className="mt-1.5 max-w-xs text-sm leading-6 text-muted md:max-w-none">
                 {service.description}
               </p>
             </div>
           </article>
         ))}
       </div>
-      <div className="mx-auto mt-14 max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto mt-14 max-w-7xl px-4 text-center sm:px-6 lg:px-8">
         <Link
           href="/contact"
           className="inline-flex items-center rounded-sm bg-amber-brand px-7 py-3.5 font-heading text-sm font-semibold text-charcoal-deep transition-colors hover:bg-amber-dark"
