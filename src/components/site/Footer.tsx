@@ -10,9 +10,9 @@ export function Footer() {
           <Image
             src="/brand/logo.png"
             alt={`${SITE.name} logo`}
-            width={320}
-            height={213}
-            className="h-28 w-auto"
+            width={380}
+            height={253}
+            className="h-32 w-auto"
           />
           <p className="mt-4 max-w-xs text-sm leading-6 text-white/70">
             Specializing in decks, gazebos, railings, and all types of
@@ -55,11 +55,32 @@ export function Footer() {
             </li>
           </ul>
           <h2 className="mt-6 font-heading text-sm font-semibold uppercase tracking-wider text-amber-brand">
-            Service areas
+            Get in touch
           </h2>
-          <p className="mt-3 text-sm leading-6 text-white/70">
-            {SITE.serviceAreas.join(" · ")} and surrounding {SITE.region}.
-          </p>
+          <ul className="mt-4 flex flex-col gap-2.5 text-sm text-white/70">
+            <li>Knoxville, TN</li>
+            <li className="italic">
+              Atendiendo Knoxville, TN y East Tennessee
+            </li>
+            <li>
+              <a href={SITE.phone.englishHref} className="transition-colors hover:text-amber-brand">
+                English: {SITE.phone.english}
+              </a>
+            </li>
+            <li>
+              <a href={SITE.phone.spanishHref} className="transition-colors hover:text-amber-brand">
+                Español: {SITE.phone.spanish}
+              </a>
+            </li>
+            <li>
+              <a
+                href="mailto:contact@evrconstructions.com"
+                className="transition-colors hover:text-amber-brand"
+              >
+                contact@evrconstructions.com
+              </a>
+            </li>
+          </ul>
         </div>
       </div>
 
