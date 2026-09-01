@@ -1,8 +1,7 @@
 {
-  "hosting": {
-    "site": "evrconstruction-site",
-    "public": "out",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "cleanUrls": true
+  "apphosting": {
+    "backendId": "evrconstruction",
+    "rootDir": "/",
+    "ignore": ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "functions"]
   }
 }
