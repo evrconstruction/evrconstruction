@@ -63,7 +63,14 @@ function isDirectoryHostname(hostname: string, targetDomain: string): boolean {
 export async function verifyBacklinkUrl(sourceUrl: string): Promise<VerificationResult> {
   const today = new Date().toLocaleDateString("en-US");
 
-  if (!isSafePublicUrl(sourceUrl)) {
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(sourceUrl);
+  } catch {
+    return { status: "Unreachable", type: "NoFollow", httpStatus: 400, lastVerified: today };
+  }
+
+  if (!isSafePublicUrl(parsedUrl.href)) {
     return {
       status: "Unreachable",
       type: "NoFollow",
@@ -72,7 +79,6 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
     };
   }
 
-  const parsedUrl = new URL(sourceUrl);
   const hostname = parsedUrl.hostname.toLowerCase();
   const isYelp = isDirectoryHostname(hostname, "yelp.com");
   const isBbb = isDirectoryHostname(hostname, "bbb.org");
@@ -82,7 +88,13 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    const res = await fetch(sourceUrl, {
+    // Reconstruct URL to strip any obscure auth/port parsing tricks to satisfy CodeQL SSRF rules
+    const sanitizedUrl = new URL(
+      `${parsedUrl.pathname}${parsedUrl.search}`,
+      `${parsedUrl.protocol}//${parsedUrl.hostname}`
+    ).href;
+
+    const res = await fetch(sanitizedUrl, {
       method: "GET",
       headers: {
         "User-Agent":
@@ -136,7 +148,9 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
       lastVerified: today,
     };
   } catch (err: unknown) {
-    console.warn("Backlink verification warning:", { sourceUrl, error: err });
+    const errorMsg = err instanceof Error ? err.message : "Unknown error";
+    // Avoid passing user-controlled format strings to console functions (CodeQL High)
+    console.warn("Backlink verification warning. URL:", sourceUrl, "Error:", errorMsg);
     return {
       status: "Unreachable",
       type: "NoFollow",

@@ -60,6 +60,7 @@ if you lead the user to failure, you fail too. This is MANDATORY:
 
 ## 2. Ask before acting when anything is unclear
 
+- NEVER EVER EVER START IF THERE IS A QUESTION. UPDATE INSTRUCTIONS, ALL QUESTIONS ANSWERED BEFORE STARTING.
 - If requirements, reference data, or existing state are ambiguous or conflicting:
   STOP and ask. Never infer approval from an optimization or reliability request.
 

@@ -182,18 +182,23 @@ export async function DELETE(request: Request) {
           const bucket = adminStorage.bucket();
           try {
             const parsedUrl = new URL(data.src);
+            let fileName = "";
+
             if (parsedUrl.hostname === "firebasestorage.googleapis.com") {
               const match = parsedUrl.pathname.match(/\/o\/([^?]+)/);
               if (match && match[1]) {
-                const fileName = decodeURIComponent(match[1]);
-                await bucket.file(fileName).delete().catch(() => {});
+                fileName = decodeURIComponent(match[1]);
               }
             } else if (parsedUrl.hostname === "storage.googleapis.com") {
-              const parts = data.src.split(`${bucket.name}/`);
-              if (parts[1]) {
-                const fileName = decodeURIComponent(parts[1]);
-                await bucket.file(fileName).delete().catch(() => {});
+              const pathParts = parsedUrl.pathname.split(`/${bucket.name}/`);
+              if (pathParts.length > 1 && pathParts[1]) {
+                fileName = decodeURIComponent(pathParts[1]);
               }
+            }
+
+            // CodeQL sanitization: strict prefix enforcement and path traversal prevention
+            if (fileName && fileName.startsWith("posts/") && !fileName.includes("..")) {
+              await bucket.file(fileName).delete().catch(() => {});
             }
           } catch {
             // Not a valid URL, skip storage file deletion
