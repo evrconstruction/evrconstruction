@@ -1,3 +1,6 @@
+import axios from "axios";
+import ssrfFilter from "ssrf-req-filter";
+
 export interface VerificationResult {
   status: "Active" | "Missing" | "Unreachable";
   type: "DoFollow" | "NoFollow";
@@ -18,34 +21,6 @@ function isSafePublicUrl(urlString: string): boolean {
       hostname.endsWith(".localhost") ||
       hostname.endsWith(".local") ||
       hostname.endsWith(".internal")
-    ) {
-      return false;
-    }
-
-    // SSRF protection: reject loopback, private IPv4/IPv6, and cloud metadata addresses
-    const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
-    const ipMatch = hostname.match(ipv4Regex);
-    if (ipMatch) {
-      const o1 = parseInt(ipMatch[1], 10);
-      const o2 = parseInt(ipMatch[2], 10);
-      if (o1 === 0) return false;
-      if (o1 === 127) return false;
-      if (o1 === 10) return false;
-      if (o1 === 169 && o2 === 254) return false;
-      if (o1 === 192 && o2 === 168) return false;
-      if (o1 === 172 && o2 >= 16 && o2 <= 31) return false;
-      if (o1 === 100 && o2 >= 64 && o2 <= 127) return false;
-    }
-
-    if (
-      hostname === "[::1]" ||
-      hostname === "::1" ||
-      hostname.startsWith("fe80:") ||
-      hostname.startsWith("[fe80:") ||
-      hostname.startsWith("fc") ||
-      hostname.startsWith("fd") ||
-      hostname.startsWith("[fc") ||
-      hostname.startsWith("[fd")
     ) {
       return false;
     }
@@ -85,29 +60,26 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
   const isNextdoor = isDirectoryHostname(hostname, "nextdoor.com");
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-    // Reconstruct URL to strip any obscure auth/port parsing tricks to satisfy CodeQL SSRF rules
     const sanitizedUrl = new URL(
       `${parsedUrl.pathname}${parsedUrl.search}`,
       `${parsedUrl.protocol}//${parsedUrl.hostname}`
     ).href;
 
-    const res = await fetch(sanitizedUrl, {
-      method: "GET",
+    // Use axios with ssrf-req-filter for true socket-level DNS rebinding protection
+    const res = await axios.get(sanitizedUrl, {
+      httpAgent: ssrfFilter(sanitizedUrl),
+      httpsAgent: ssrfFilter(sanitizedUrl),
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       },
-      signal: controller.signal,
+      timeout: 8000,
+      validateStatus: () => true, // Don't throw on 4xx/5xx
     });
 
-    clearTimeout(timeoutId);
-
-    if (res.ok) {
-      const html = await res.text().catch(() => "");
+    if (res.status >= 200 && res.status < 300) {
+      const html = typeof res.data === "string" ? res.data : "";
       const hasBrand =
         html.toLowerCase().includes("evr construction") ||
         html.toLowerCase().includes("evrconstruction") ||
