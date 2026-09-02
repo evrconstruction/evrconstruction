@@ -1,0 +1,49 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAdmin() {
+      return request.auth != null && 
+             request.auth.token.email == 'contact@evrconstructions.com';
+    }
+
+    // Project posts collection - public read, admin write
+    match /posts/{postId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // SEO Agent runs, config, and directives - admin only
+    match /agent-runs/{runId} {
+      allow read, write: if isAdmin();
+    }
+    match /agent-config/{configId} {
+      allow read, write: if isAdmin();
+    }
+    match /agent-directives/{directiveId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Backlinks collection - admin only
+    match /backlinks/{backlinkId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Integrations credentials store (GA4, GSC) - admin only
+    match /integrations/{provider} {
+      allow read, write: if isAdmin();
+    }
+
+    // Mail queue collection for alert notifications
+    match /mail/{mailId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Default deny all other paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

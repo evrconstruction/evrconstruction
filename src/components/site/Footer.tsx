@@ -36,6 +36,14 @@ export function Footer() {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link
+                href="/admin/login"
+                className="text-sm text-white/70 transition-colors hover:text-amber-brand"
+              >
+                Admin
+              </Link>
+            </li>
           </ul>
         </nav>
 

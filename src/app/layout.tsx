@@ -6,12 +6,14 @@ const rubik = Rubik({
   subsets: ["latin"],
   weight: ["500", "600", "700"],
   variable: "--font-rubik",
+  display: "swap",
 });
 
 const openSans = Open_Sans({
   subsets: ["latin"],
   weight: ["400", "700"],
   variable: "--font-open-sans",
+  display: "swap",
 });
 
 export const SITE_URL = "https://evrconstructions.com";
