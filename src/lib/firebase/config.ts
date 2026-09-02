@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
@@ -17,6 +18,13 @@ const firebaseConfig = {
 const app = typeof window !== "undefined"
   ? (getApps().length === 0 ? initializeApp(firebaseConfig) : getApp())
   : ({} as FirebaseApp);
+
+if (typeof window !== "undefined") {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaEnterpriseProvider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "6LfA8aUtAAAAAK9RJDiKsWe1qg9t-ZuqsP4tjdMz"),
+    isTokenAutoRefreshEnabled: true
+  });
+}
 
 const auth = typeof window !== "undefined" ? getAuth(app) : ({} as Auth);
 const db = typeof window !== "undefined" ? getFirestore(app) : ({} as Firestore);
