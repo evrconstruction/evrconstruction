@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { runAgentExecution } from "@/lib/seo-agent/orchestrator";
+import { verifyAdminSession } from "@/lib/auth-guard";
 
 export async function POST(req: Request) {
+  try {
+    await verifyAdminSession();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await req.json().catch(() => ({}));
     const { skillId } = body;

@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { verifyBacklinkUrl } from "@/lib/integrations/backlink-verifier";
+import { verifyAdminSession } from "@/lib/auth-guard";
 
 export async function POST() {
+  try {
+    await verifyAdminSession();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const snapshot = await adminDb.collection("backlinks").get();
     const updatedBacklinks = [];

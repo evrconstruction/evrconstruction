@@ -36,6 +36,19 @@ const localBusinessJsonLd = {
     addressRegion: "TN",
     addressCountry: "US",
   },
+  geo: {
+    "@type": "GeoCoordinates",
+    latitude: 35.9606,
+    longitude: -83.9207,
+  },
+  openingHoursSpecification: [
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      opens: "07:00",
+      closes: "18:00",
+    }
+  ],
 };
 
 export default function SiteLayout({ children }: { children: ReactNode }) {

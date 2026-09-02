@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { generatePostGeoEnhancements } from "@/lib/seo-agent/skills/saturday-post-enhancer";
+import { verifyAdminSession } from "@/lib/auth-guard";
 
 export async function POST(req: Request) {
+  try {
+    await verifyAdminSession();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const { imageBase64, currentCategory } = body;
@@ -13,7 +20,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
 
     // Clean base64 string
     const base64Data = imageBase64.includes("base64,")

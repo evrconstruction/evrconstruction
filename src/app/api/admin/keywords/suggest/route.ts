@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { verifyAdminSession } from "@/lib/auth-guard";
 
 const EAST_TN_LOCATIONS = [
   "Knoxville, TN",
@@ -28,6 +29,12 @@ const LOCAL_KEYWORD_TEMPLATES = [
 ];
 
 export async function POST() {
+  try {
+    await verifyAdminSession();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const suggestions: { keyword: string; category: string; location: string }[] = [];
 

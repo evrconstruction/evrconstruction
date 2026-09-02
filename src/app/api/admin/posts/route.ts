@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { adminDb, adminStorage } from "@/lib/firebase-admin";
 import { INITIAL_PROJECT_POSTS, ProjectPost } from "@/lib/posts-store";
+import { verifyAdminSession } from "@/lib/auth-guard";
 
 const POSTS_COLLECTION = "posts";
 
 export async function GET() {
+  try {
+    await verifyAdminSession();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     let snapshot = await adminDb
       .collection(POSTS_COLLECTION)
@@ -61,6 +68,12 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    await verifyAdminSession();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
     const body = await request.json();
     const { category, src, alt, caption } = body;
 
@@ -81,7 +94,18 @@ export async function POST(request: Request) {
           const mimeType = matches[1];
           const base64Data = matches[2];
           const buffer = Buffer.from(base64Data, "base64");
-          const extension = mimeType.split("/")[1]?.replace("+xml", "") || "jpg";
+
+          const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+          const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
+          if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
+            return NextResponse.json({ error: "Unsupported image format" }, { status: 400 });
+          }
+          if (buffer.length > MAX_IMAGE_SIZE_BYTES) {
+            return NextResponse.json({ error: "Image too large (max 10MB)" }, { status: 400 });
+          }
+
+          const extension = mimeType.split("/")[1] || "jpg";
           const fileName = `posts/project-${Date.now()}.${extension}`;
 
           const bucket = adminStorage.bucket();
@@ -134,6 +158,12 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  try {
+    await verifyAdminSession();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

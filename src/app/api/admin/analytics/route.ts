@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { fetchGA4Analytics } from "@/lib/integrations/google-analytics";
+import { verifyAdminSession } from "@/lib/auth-guard";
 
 export async function GET(request: Request) {
+  try {
+    await verifyAdminSession();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get("days") || "30", 10);

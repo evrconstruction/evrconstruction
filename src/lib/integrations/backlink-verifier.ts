@@ -110,7 +110,7 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
         isBbb;
 
       return {
-        status: hasBrand ? "Active" : "Active",
+        status: hasBrand ? "Active" : "Missing",
         type: isNoFollow ? "NoFollow" : "DoFollow",
         httpStatus: res.status,
         lastVerified: today,
@@ -122,7 +122,7 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
       const isKnownDirectory = isBbb || isYelp || isNextdoor;
 
       return {
-        status: isKnownDirectory ? "Active" : "Active",
+        status: isKnownDirectory ? "Active" : "Unreachable",
         type: "NoFollow",
         httpStatus: 200,
         lastVerified: today,
@@ -138,7 +138,7 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
   } catch (err: unknown) {
     console.warn("Backlink verification warning:", { sourceUrl, error: err });
     return {
-      status: "Active",
+      status: "Unreachable",
       type: "NoFollow",
       httpStatus: 200,
       lastVerified: today,

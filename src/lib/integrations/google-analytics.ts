@@ -58,6 +58,8 @@ export async function fetchGA4Analytics(days = 30): Promise<GA4ReportResult> {
           dateRanges: [{ startDate: start, endDate: end }],
           metrics: [
             { name: "activeUsers" },
+            { name: "newUsers" },
+            { name: "engagementRate" },
             { name: "sessions" },
             { name: "screenPageViews" },
             { name: "averageSessionDuration" },
@@ -73,10 +75,12 @@ export async function fetchGA4Analytics(days = 30): Promise<GA4ReportResult> {
         const json = await res.json();
         const totals = json.totals?.[0]?.metricValues || [];
         const visitors = parseInt(totals[0]?.value || "0", 10);
-        const sessions = parseInt(totals[1]?.value || "0", 10);
-        const pageViews = parseInt(totals[2]?.value || "0", 10);
-        const avgDurationSecs = Math.round(parseFloat(totals[3]?.value || "0"));
-        const conversions = parseInt(totals[4]?.value || "0", 10);
+        const newUsersCount = parseInt(totals[1]?.value || "0", 10);
+        const engRateVal = parseFloat(totals[2]?.value || "0") * 100;
+        const sessions = parseInt(totals[3]?.value || "0", 10);
+        const pageViews = parseInt(totals[4]?.value || "0", 10);
+        const avgDurationSecs = Math.round(parseFloat(totals[5]?.value || "0"));
+        const conversions = parseInt(totals[6]?.value || "0", 10);
 
         const rows = json.rows || [];
         const timeSeries = rows.map((r: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }) => {
@@ -96,8 +100,8 @@ export async function fetchGA4Analytics(days = 30): Promise<GA4ReportResult> {
           days,
           metrics: {
             visitors: visitors.toLocaleString(),
-            newUsers: Math.round(visitors * 0.85).toLocaleString(),
-            engagementRate: visitors > 0 ? "100%" : "0%",
+            newUsers: newUsersCount.toLocaleString(),
+            engagementRate: `${engRateVal.toFixed(1)}%`,
             avgSessionDuration: avgDurationSecs > 0 ? `${Math.floor(avgDurationSecs / 60)}m ${avgDurationSecs % 60}s` : "0m 0s",
             conversions: conversions.toString(),
           },

@@ -16,13 +16,21 @@ service cloud.firestore {
     }
 
     // SEO Agent runs, config, and directives - admin only
-    match /agent-runs/{runId} {
+    match /seo_agent_runs/{runId} {
       allow read, write: if isAdmin();
     }
     match /agent-config/{configId} {
       allow read, write: if isAdmin();
     }
-    match /agent-directives/{directiveId} {
+    match /seo_agent_directives/{directiveId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Analytics and Keywords
+    match /tracked_keywords/{keywordId} {
+      allow read, write: if isAdmin();
+    }
+    match /activity_logs/{logId} {
       allow read, write: if isAdmin();
     }
 

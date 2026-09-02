@@ -6,3 +6,8 @@ runConfig:
   concurrency: 80
   cpu: 1
   memoryMiB: 512
+env:
+  - variable: FIREBASE_SERVICE_ACCOUNT_KEY
+    secret: FIREBASE_SERVICE_ACCOUNT_KEY
+  - variable: FIREBASE_ADMIN_SERVICE_ACCOUNT_KEY
+    secret: FIREBASE_ADMIN_SERVICE_ACCOUNT_KEY

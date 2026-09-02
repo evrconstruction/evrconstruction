@@ -38,9 +38,26 @@ const FAQS = [
   },
 ];
 
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQS.map((faq) => ({
+    "@type": "Question",
+    name: faq.q,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: faq.a,
+    },
+  })),
+};
+
 export default function HomePage() {
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       {/* Hero — text left, portrait image filling the full right side edge-to-edge */}
       <section className="relative overflow-hidden bg-white lg:min-h-[680px]">
         <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 pt-12 pb-12 sm:px-6 sm:pb-8 lg:grid-cols-[1fr_1fr] lg:gap-4 lg:px-8 lg:pb-0">

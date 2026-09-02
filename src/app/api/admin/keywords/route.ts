@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 import { fetchSearchConsoleKeywords, GSCKeywordItem } from "@/lib/integrations/google-search-console";
 import { adminDb } from "@/lib/firebase-admin";
+import { verifyAdminSession } from "@/lib/auth-guard";
 
 export type KeywordItem = GSCKeywordItem;
 const TRACKED_KEYWORDS_COLLECTION = "tracked_keywords";
 
 export async function GET() {
+  try {
+    await verifyAdminSession();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const data = await fetchSearchConsoleKeywords();
     return NextResponse.json(data);
@@ -16,6 +23,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  try {
+    await verifyAdminSession();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const keyword = (body.keyword || "").trim().toLowerCase();
@@ -71,6 +84,12 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  try {
+    await verifyAdminSession();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

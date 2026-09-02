@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { verifyBacklinkUrl } from "@/lib/integrations/backlink-verifier";
+import { verifyAdminSession } from "@/lib/auth-guard";
 
 export interface BacklinkItem {
   id: string;
@@ -44,6 +45,12 @@ const INITIAL_VERIFIED_CITATIONS: Omit<BacklinkItem, "id">[] = [
 ];
 
 export async function GET() {
+  try {
+    await verifyAdminSession();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   let backlinksList: BacklinkItem[] = [];
 
   try {
@@ -116,6 +123,12 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    await verifyAdminSession();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
     const body = await request.json();
     const { sourceUrl, title, type } = body;
 
@@ -147,6 +160,12 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  try {
+    await verifyAdminSession();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

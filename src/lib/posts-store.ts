@@ -101,27 +101,4 @@ export const INITIAL_PROJECT_POSTS: ProjectPost[] = [
   },
 ];
 
-// Global runtime cache for development & live SSR
-const globalStore = global as unknown as { __EVR_POSTS__?: ProjectPost[] };
-globalStore.__EVR_POSTS__ = [...INITIAL_PROJECT_POSTS];
 
-export function getAllPosts(): ProjectPost[] {
-  return globalStore.__EVR_POSTS__ ?? INITIAL_PROJECT_POSTS;
-}
-
-export function addPost(post: Omit<ProjectPost, "id" | "createdAt" | "published">): ProjectPost {
-  const newPost: ProjectPost = {
-    ...post,
-    id: `post-${Date.now()}`,
-    createdAt: new Date().toISOString().split("T")[0],
-    published: true,
-  };
-  globalStore.__EVR_POSTS__ = [newPost, ...(globalStore.__EVR_POSTS__ ?? INITIAL_PROJECT_POSTS)];
-  return newPost;
-}
-
-export function deletePost(id: string): boolean {
-  const before = (globalStore.__EVR_POSTS__ ?? []).length;
-  globalStore.__EVR_POSTS__ = (globalStore.__EVR_POSTS__ ?? []).filter((p) => p.id !== id);
-  return (globalStore.__EVR_POSTS__ ?? []).length < before;
-}

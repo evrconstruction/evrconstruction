@@ -11,7 +11,10 @@ service firebase.storage {
     // Public read for project images, admin upload/delete
     match /posts/{allPaths=**} {
       allow read: if true;
-      allow write, delete: if isAdmin();
+      allow delete: if isAdmin();
+      allow create, update: if isAdmin()
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp|avif)');
     }
 
     // Default deny

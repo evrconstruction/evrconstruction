@@ -89,7 +89,7 @@ export function ContactForm() {
       </h2>
 
       {status === "success" ? (
-        <div className="mt-5 flex flex-1 flex-col items-center justify-center gap-3 rounded-sm bg-cloud p-8 text-center">
+        <div aria-live="polite" className="mt-5 flex flex-1 flex-col items-center justify-center gap-3 rounded-sm bg-cloud p-8 text-center">
           <p className="font-heading text-lg font-bold text-charcoal">
             Message sent!
           </p>
@@ -100,11 +100,12 @@ export function ContactForm() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="mt-5 flex flex-1 flex-col gap-4">
-          <label className="flex flex-col gap-1.5">
+          <label htmlFor="firstName" className="flex flex-col gap-1.5">
             <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
               First Name
             </span>
             <input
+              id="firstName"
               type="text"
               name="firstName"
               required
@@ -114,11 +115,12 @@ export function ContactForm() {
               className={inputClasses}
             />
           </label>
-          <label className="flex flex-col gap-1.5">
+          <label htmlFor="lastName" className="flex flex-col gap-1.5">
             <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
               Last Name
             </span>
             <input
+              id="lastName"
               type="text"
               name="lastName"
               required
@@ -128,11 +130,12 @@ export function ContactForm() {
               className={inputClasses}
             />
           </label>
-          <label className="flex flex-col gap-1.5">
+          <label htmlFor="city" className="flex flex-col gap-1.5">
             <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
               City / County
             </span>
             <input
+              id="city"
               type="text"
               name="city"
               required
@@ -143,11 +146,12 @@ export function ContactForm() {
               className={`${inputClasses} placeholder:text-muted/50`}
             />
           </label>
-          <label className="flex flex-col gap-1.5">
+          <label htmlFor="phone" className="flex flex-col gap-1.5">
             <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
               Phone
             </span>
             <input
+              id="phone"
               type="tel"
               name="phone"
               autoComplete="tel"
@@ -156,11 +160,12 @@ export function ContactForm() {
               className={inputClasses}
             />
           </label>
-          <label className="flex flex-col gap-1.5">
+          <label htmlFor="email" className="flex flex-col gap-1.5">
             <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
               Email
             </span>
             <input
+              id="email"
               type="email"
               name="email"
               required
@@ -170,11 +175,12 @@ export function ContactForm() {
               className={inputClasses}
             />
           </label>
-          <label className="flex min-h-0 flex-1 flex-col gap-1.5">
+          <label htmlFor="message" className="flex min-h-0 flex-1 flex-col gap-1.5">
             <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
               Tell us about your project
             </span>
             <textarea
+              id="message"
               name="message"
               required
               value={form.message}
@@ -184,7 +190,7 @@ export function ContactForm() {
           </label>
 
           {status === "error" && (
-            <p className="rounded-sm bg-red-50 px-4 py-3 text-sm text-red-700">
+            <p aria-live="polite" className="rounded-sm bg-red-50 px-4 py-3 text-sm text-red-700">
               Something went wrong sending your message. Please try again, or
               call us directly.
             </p>
