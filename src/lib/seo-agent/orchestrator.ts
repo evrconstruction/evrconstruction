@@ -13,6 +13,7 @@ import { runFridayConversionsSkill } from "./skills/friday-conversions";
 import { runSaturdayPostEnhancerSkill } from "./skills/saturday-post-enhancer";
 import { runSundayDigestSkill } from "./skills/sunday-digest";
 import { addNotification } from "@/lib/notifications";
+import { adminDb } from "@/lib/firebase-admin";
 
 // Clean Fresh Skills Configuration
 export const SKILLS_CONFIG: AgentSkill[] = [
@@ -115,6 +116,37 @@ function getStore(): AgentStore {
 export async function getSeoAgentDashboardData(): Promise<SeoAgentDashboardData> {
   const store = getStore();
 
+  // 1. Fetch real counts from Firestore
+  let activeBacklinks = 0;
+  let trackedKeywords = 0;
+  try {
+    const [backlinkSnap, keywordSnap, dirSnap, runSnap] = await Promise.all([
+      adminDb.collection("backlinks").where("status", "==", "Active").get(),
+      adminDb.collection("tracked_keywords").get(),
+      adminDb.collection("seo_agent_directives").get(),
+      adminDb.collection("seo_agent_runs").orderBy("timestamp", "desc").limit(20).get(),
+    ]);
+
+    activeBacklinks = backlinkSnap.size;
+    trackedKeywords = keywordSnap.size;
+
+    if (!dirSnap.empty && store.directives.length === 0) {
+      store.directives = dirSnap.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<AgentDirective, "id">),
+      }));
+    }
+
+    if (!runSnap.empty && store.recentRuns.length === 0) {
+      store.recentRuns = runSnap.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<AgentRunLog, "id">),
+      }));
+    }
+  } catch (err) {
+    console.warn("Firestore fetch in getSeoAgentDashboardData:", err);
+  }
+
   const totalRuns = store.recentRuns.length;
   const passedRuns = store.recentRuns.filter((r) => r.status === "Success").length;
   const healthScore = totalRuns > 0 ? Math.round((passedRuns / totalRuns) * 100) : 100;
@@ -126,8 +158,8 @@ export async function getSeoAgentDashboardData(): Promise<SeoAgentDashboardData>
     directives: store.directives,
     recentRuns: store.recentRuns,
     stats: {
-      activeBacklinks: 0,
-      trackedKeywords: 0,
+      activeBacklinks,
+      trackedKeywords,
       page2Opportunities: 0,
       geoCoverageScore: 100,
     },
@@ -200,8 +232,11 @@ export async function runSkill(skillId: string): Promise<{ success: boolean; log
       const exists = store.directives.some((d) => d.title === directive.title);
       if (!exists) {
         store.directives.unshift(directive);
+        await adminDb.collection("seo_agent_directives").doc(directive.id).set(directive).catch(() => {});
       }
     }
+
+    await adminDb.collection("seo_agent_runs").add(log).catch(() => {});
 
     if (newDirectives.some((d) => d.priority === "High")) {
       addNotification({
@@ -252,6 +287,7 @@ export async function resolveDirective(directiveId: string, status: "Open" | "Re
   const index = store.directives.findIndex((d) => d.id === directiveId);
   if (index !== -1) {
     store.directives[index].status = status;
+    await adminDb.collection("seo_agent_directives").doc(directiveId).update({ status }).catch(() => {});
   }
   return store.directives;
 }

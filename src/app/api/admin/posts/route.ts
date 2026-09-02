@@ -6,41 +6,57 @@ const POSTS_COLLECTION = "posts";
 
 export async function GET() {
   try {
-    const snapshot = await adminDb
+    let snapshot = await adminDb
       .collection(POSTS_COLLECTION)
       .orderBy("createdAt", "desc")
       .get();
 
-    if (!snapshot.empty) {
-      const posts: ProjectPost[] = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          category: data.category || "Decks",
-          src: data.src || "/images/deck-4.jpg",
-          alt: data.alt || "",
-          caption: data.caption || "",
-          createdAt: data.createdAt || new Date().toISOString().split("T")[0],
-          published: data.published ?? true,
-        };
-      });
+    // If Firestore posts collection is empty, auto-seed with initial posts
+    if (snapshot.empty) {
+      const batch = adminDb.batch();
+      for (const post of INITIAL_PROJECT_POSTS) {
+        const { id, ...data } = post;
+        const ref = adminDb.collection(POSTS_COLLECTION).doc(id);
+        batch.set(ref, data);
+      }
+      await batch.commit();
 
-      return NextResponse.json({
-        posts,
-        total: posts.length,
-        source: "firestore",
-      });
+      snapshot = await adminDb
+        .collection(POSTS_COLLECTION)
+        .orderBy("createdAt", "desc")
+        .get();
     }
-  } catch (err) {
-    console.warn("Firestore fetch error, falling back to initial posts cache:", err);
-  }
 
-  // Fallback to local default posts
-  return NextResponse.json({
-    posts: INITIAL_PROJECT_POSTS,
-    total: INITIAL_PROJECT_POSTS.length,
-    source: "local-fallback",
-  });
+    const posts: ProjectPost[] = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        category: data.category || "Decks",
+        src: data.src || "/images/deck-4.jpg",
+        alt: data.alt || "",
+        caption: data.caption || "",
+        createdAt: data.createdAt || new Date().toISOString().split("T")[0],
+        published: data.published ?? true,
+      };
+    });
+
+    return NextResponse.json({
+      posts,
+      total: posts.length,
+      source: "firestore",
+    });
+  } catch (err) {
+    console.error("Firestore fetch error:", err);
+    return NextResponse.json(
+      {
+        posts: INITIAL_PROJECT_POSTS,
+        total: INITIAL_PROJECT_POSTS.length,
+        source: "local-fallback",
+        error: err instanceof Error ? err.message : "Database fetch failed",
+      },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: Request) {
@@ -65,22 +81,31 @@ export async function POST(request: Request) {
           const mimeType = matches[1];
           const base64Data = matches[2];
           const buffer = Buffer.from(base64Data, "base64");
-          const extension = mimeType.split("/")[1] || "jpg";
+          const extension = mimeType.split("/")[1]?.replace("+xml", "") || "jpg";
           const fileName = `posts/project-${Date.now()}.${extension}`;
 
           const bucket = adminStorage.bucket();
           const file = bucket.file(fileName);
 
           await file.save(buffer, {
-            metadata: { contentType: mimeType },
+            metadata: {
+              contentType: mimeType,
+              cacheControl: "public, max-age=31536000",
+            },
             public: true,
           });
 
-          // Public URL on Firebase Storage / Google Storage
-          publicImageUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+          await file.makePublic().catch(() => {});
+
+          // Standard Firebase Storage download URL
+          publicImageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
         }
       } catch (storageErr) {
-        console.warn("Cloud Storage upload failed, keeping original image source:", storageErr);
+        console.error("Cloud Storage upload failed:", storageErr);
+        return NextResponse.json(
+          { error: `Cloud Storage upload failed: ${storageErr instanceof Error ? storageErr.message : "Unknown error"}` },
+          { status: 500 }
+        );
       }
     }
 
@@ -93,23 +118,17 @@ export async function POST(request: Request) {
       published: true,
     };
 
-    let savedId = `post-${Date.now()}`;
-
-    try {
-      const docRef = await adminDb.collection(POSTS_COLLECTION).add(newPostData);
-      savedId = docRef.id;
-    } catch (firestoreErr) {
-      console.warn("Firestore save failed, using local ID:", firestoreErr);
-    }
+    const docRef = await adminDb.collection(POSTS_COLLECTION).add(newPostData);
 
     const savedPost: ProjectPost = {
-      id: savedId,
+      id: docRef.id,
       ...newPostData,
     };
 
     return NextResponse.json({ status: "ok", post: savedPost });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Failed to create post.";
+    console.error("POST /api/admin/posts error:", err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -123,10 +142,36 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Missing post id" }, { status: 400 });
     }
 
+    // Check if post exists and has a storage image to clean up
     try {
-      await adminDb.collection(POSTS_COLLECTION).doc(id).delete();
+      const docRef = adminDb.collection(POSTS_COLLECTION).doc(id);
+      const doc = await docRef.get();
+      if (doc.exists) {
+        const data = doc.data();
+        if (data?.src && typeof data.src === "string") {
+          const bucket = adminStorage.bucket();
+          if (data.src.includes("firebasestorage.googleapis.com")) {
+            const match = data.src.match(/\/o\/([^?]+)/);
+            if (match && match[1]) {
+              const fileName = decodeURIComponent(match[1]);
+              await bucket.file(fileName).delete().catch(() => {});
+            }
+          } else if (data.src.includes("storage.googleapis.com")) {
+            const parts = data.src.split(`${bucket.name}/`);
+            if (parts[1]) {
+              const fileName = decodeURIComponent(parts[1]);
+              await bucket.file(fileName).delete().catch(() => {});
+            }
+          }
+        }
+        await docRef.delete();
+      }
     } catch (firestoreErr) {
-      console.warn("Firestore delete failed for ID:", id, firestoreErr);
+      console.error("Firestore delete failed for ID:", id, firestoreErr);
+      return NextResponse.json(
+        { error: "Failed to delete post from database." },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ status: "ok", deleted: true });
@@ -135,3 +180,4 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+

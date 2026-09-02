@@ -3,7 +3,7 @@ import { getSeoAgentDashboardData } from "@/lib/seo-agent/orchestrator";
 
 export async function GET() {
   try {
-    const data = getSeoAgentDashboardData();
+    const data = await getSeoAgentDashboardData();
     return NextResponse.json(data);
   } catch (error) {
     console.error("Error fetching SEO agent data:", error);

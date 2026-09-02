@@ -59,6 +59,20 @@ export function ContactForm() {
 
       if (data.success) {
         setStatus("success");
+        // Log lead event to Firestore activity logs
+        fetch("/api/admin/analytics/activity", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event: "form_submit",
+            label: "Consultation Request Submitted",
+            detail: `${form.firstName} ${form.lastName} in ${form.city} — ${form.message.substring(0, 50)}...`,
+            location: `${form.city || "East Tennessee"}, TN`,
+            device: typeof window !== "undefined" && window.innerWidth < 768 ? "Mobile" : "Desktop",
+            page: "/contact",
+          }),
+        }).catch(() => {});
+
         setForm(initialForm);
       } else {
         setStatus("error");

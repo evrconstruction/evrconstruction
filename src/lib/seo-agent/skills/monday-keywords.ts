@@ -1,4 +1,5 @@
 import { AgentDirective, AgentRunLog } from "../types";
+import { fetchSearchConsoleKeywords } from "@/lib/integrations/google-search-console";
 
 export interface SkillResult {
   runLog: AgentRunLog;
@@ -7,45 +8,61 @@ export interface SkillResult {
 
 export async function runMondayKeywordsSkill(): Promise<SkillResult> {
   const start = Date.now();
+  const gscData = await fetchSearchConsoleKeywords();
+  const keywords = gscData.keywords || [];
 
-  // Simulates GSC integration query for local construction terms (Knoxville, Farragut, East TN)
-  const opportunityKeywords = [
-    { query: "custom deck builder knoxville", pos: 3, volume: 480 },
-    { query: "cedar gazebo builder maryville tn", pos: 11, volume: 140 },
-    { query: "outdoor living contractor knoxville", pos: 14, volume: 410 },
-    { query: "licensed carpentry framing knoxville", pos: 18, volume: 130 },
-  ];
+  const page2Queries = keywords.filter((k) => k.position >= 11 && k.position <= 25);
+  const top10Queries = keywords.filter((k) => k.position > 0 && k.position <= 10);
+  const pendingQueries = keywords.filter((k) => k.position === 0);
 
-  const page2Queries = opportunityKeywords.filter((k) => k.pos >= 11 && k.pos <= 25);
+  const directives: AgentDirective[] = [];
 
-  const directives: AgentDirective[] = [
-    {
-      id: `dir-kw-1`,
+  if (page2Queries.length > 0) {
+    page2Queries.slice(0, 2).forEach((kw, i) => {
+      directives.push({
+        id: `dir-kw-page2-${Date.now()}-${i}`,
+        skillId: "skill-monday",
+        title: `Target Page-2 Query: '${kw.keyword}'`,
+        description: `Currently ranked #${kw.position} with ${kw.volume} impressions in Google Search Console. Adding project posts with captions mentioning '${kw.keyword}' will help push this term onto Page 1.`,
+        impact: `Rank #${kw.position} → Target Top 10`,
+        priority: "High",
+        category: "Keywords",
+        actionLabel: "View in Keywords",
+        actionHref: "/admin/keywords",
+        status: "Open",
+        createdAt: new Date().toISOString(),
+      });
+    });
+  } else if (pendingQueries.length > 0) {
+    const sample = pendingQueries[0];
+    directives.push({
+      id: `dir-kw-pending-${Date.now()}`,
       skillId: "skill-monday",
-      title: "Target Page-2 Query: 'outdoor living contractor knoxville'",
-      description: "Ranked #14 in Google Search Console. Adding 1-2 tagged project posts featuring outdoor pergolas/decks in Knoxville will push this high-volume term (410/mo) onto Page 1.",
-      impact: "+410 monthly search impressions",
-      priority: "High",
-      category: "Keywords",
-      actionLabel: "View in Keywords",
-      actionHref: "/admin/keywords",
-      status: "Open",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: `dir-kw-2`,
-      skillId: "skill-monday",
-      title: "Maryville Geo Target: 'cedar gazebo builder maryville tn'",
-      description: "Currently sitting at position #11. Tagging a Maryville project post will secure a top 5 ranking.",
-      impact: "High intent local leads",
+      title: `Publish Content for Target Keyword: '${sample.keyword}'`,
+      description: `Target term '${sample.keyword}' is being tracked and awaiting initial Google crawler indexing. Publishing a project post or service gallery photo tagged with this term will accelerate indexation.`,
+      impact: "Accelerates Google Search indexation",
       priority: "Medium",
       category: "Keywords",
-      actionLabel: "Create Tagged Post",
+      actionLabel: "Create Project Post",
       actionHref: "/admin/posts",
       status: "Open",
       createdAt: new Date().toISOString(),
-    },
-  ];
+    });
+  }
+
+  const findings: string[] = [];
+  if (top10Queries.length > 0) {
+    findings.push(`Top 10 Rankings: ${top10Queries.length} search queries actively ranking on Page 1.`);
+  }
+  if (page2Queries.length > 0) {
+    findings.push(`Page 2 Opportunities: ${page2Queries.length} terms in positions 11–25.`);
+  }
+  if (pendingQueries.length > 0) {
+    findings.push(`Tracked Target Queries: ${pendingQueries.length} terms monitored in East Tennessee.`);
+  }
+  if (findings.length === 0) {
+    findings.push("Keywords database synchronized. Ready for Google Search Console crawler queries.");
+  }
 
   const runLog: AgentRunLog = {
     id: `run-${Date.now()}-mon`,
@@ -53,13 +70,9 @@ export async function runMondayKeywordsSkill(): Promise<SkillResult> {
     skillId: "skill-monday",
     skillName: "Keyword & Ranking Tracker",
     status: "Success",
-    durationMs: Date.now() - start + 120,
-    summary: `Analyzed 51 GSC search queries. Detected ${page2Queries.length} high-opportunity local terms on Page 2 (Positions 11–25).`,
-    findings: [
-      "Top keyword 'custom deck builder knoxville' steady at rank #3.",
-      "Identified 'outdoor living contractor knoxville' at #14 (410/mo volume).",
-      "Identified 'cedar gazebo builder maryville tn' at #11.",
-    ],
+    durationMs: Date.now() - start,
+    summary: `Analyzed ${keywords.length} target search terms. Identified ${top10Queries.length} Page-1 rankings and ${page2Queries.length} high-opportunity terms.`,
+    findings,
   };
 
   return { runLog, directives };

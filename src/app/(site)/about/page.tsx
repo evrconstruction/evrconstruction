@@ -189,6 +189,7 @@ export default function AboutPage() {
                 src="/images/about-building.jpg"
                 alt="Framed house under construction by EVR Construction"
                 fill
+                sizes="(min-width: 1024px) 50vw, 100vw"
                 className="object-cover object-top"
               />
             </div>

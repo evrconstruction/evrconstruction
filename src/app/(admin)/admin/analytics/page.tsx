@@ -41,96 +41,6 @@ interface AnalyticsData {
   };
 }
 
-const EVENT_TYPES = [
-  { name: "page_view", label: "Page Views", count: 482, change: "+16%", color: "bg-blue-50 text-blue-600" },
-  { name: "user_engagement", label: "Active Engagement", count: 329, change: "+12%", color: "bg-emerald-50 text-emerald-600" },
-  { name: "click", label: "CTA & Phone Clicks", count: 74, change: "+28%", color: "bg-purple-50 text-purple-600" },
-  { name: "form_submit", label: "Estimate Form Submissions", count: 18, change: "+33%", color: "bg-amber-50 text-amber-600" },
-];
-
-const RECENT_ACTIVITY_ITEMS = [
-  {
-    id: "ev-01",
-    event: "form_submit",
-    label: "Consultation Request Submitted",
-    detail: "Estimate requested for Custom Deck & Railing",
-    location: "Farragut, TN",
-    device: "iPhone (Safari)",
-    page: "/contact",
-    time: "2 minutes ago",
-  },
-  {
-    id: "ev-02",
-    event: "click",
-    label: "Phone Number Clicked",
-    detail: "Header quick call action: (865) 304-4536",
-    location: "Knoxville, TN",
-    device: "Android (Chrome)",
-    page: "/",
-    time: "8 minutes ago",
-  },
-  {
-    id: "ev-03",
-    event: "page_view",
-    label: "Service Detail Viewed",
-    detail: "Viewing /projects/decks (Custom wood & composite)",
-    location: "Hardin Valley, TN",
-    device: "MacBook Pro (Chrome)",
-    page: "/projects/decks",
-    time: "14 minutes ago",
-  },
-  {
-    id: "ev-04",
-    event: "user_engagement",
-    label: "Gallery Scroll 90%",
-    detail: "Homeowner viewed full project photo gallery",
-    location: "Maryville, TN",
-    device: "iPad (Safari)",
-    page: "/projects",
-    time: "26 minutes ago",
-  },
-  {
-    id: "ev-05",
-    event: "page_view",
-    label: "Gazebo Portfolio Viewed",
-    detail: "Viewing /projects/gazebo",
-    location: "Knoxville, TN",
-    device: "Windows (Edge)",
-    page: "/projects/gazebo",
-    time: "41 minutes ago",
-  },
-  {
-    id: "ev-06",
-    event: "click",
-    label: "CTA Button Clicked",
-    detail: "Clicked 'Book a Free Consultation' in Hero",
-    location: "Oak Ridge, TN",
-    device: "iPhone (Safari)",
-    page: "/",
-    time: "1 hour ago",
-  },
-  {
-    id: "ev-07",
-    event: "form_submit",
-    label: "Contact Inquiry Submitted",
-    detail: "Gazebo & Patio Restoration in Hardin Valley",
-    location: "Hardin Valley, TN",
-    device: "Android (Chrome)",
-    page: "/contact",
-    time: "2 hours ago",
-  },
-  {
-    id: "ev-08",
-    event: "page_view",
-    label: "Home Page Landing",
-    detail: "Direct organic search query from Google",
-    location: "Knoxville, TN",
-    device: "MacBook Air (Safari)",
-    page: "/",
-    time: "3 hours ago",
-  },
-];
-
 function getEventIcon(name: string) {
   switch (name) {
     case "page_view":
@@ -167,12 +77,33 @@ function getEventIcon(name: string) {
   }
 }
 
+interface ActivityItem {
+  id: string;
+  event: string;
+  label: string;
+  detail: string;
+  location: string;
+  device: string;
+  page: string;
+  timestamp: number;
+  timeAgo?: string;
+  time?: string;
+}
+
 export default function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedDays, setSelectedDays] = useState(30);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [activityEvents, setActivityEvents] = useState<ActivityItem[]>([]);
+  const [activityCounts, setActivityCounts] = useState({
+    page_view: 0,
+    user_engagement: 0,
+    click: 0,
+    form_submit: 0,
+  });
+  const [activityLoading, setActivityLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -197,6 +128,40 @@ export default function AnalyticsPage() {
       isMounted = false;
     };
   }, [selectedDays]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadActivity() {
+      try {
+        const res = await fetch(`/api/admin/analytics/activity?filter=${activeFilter}`);
+        if (res.ok && isMounted) {
+          const json = await res.json();
+          setActivityEvents(json.events || []);
+          if (json.counts) {
+            setActivityCounts(json.counts);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load activity logs:", err);
+      } finally {
+        if (isMounted) setActivityLoading(false);
+      }
+    }
+
+    loadActivity();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeFilter]);
+
+  const dynamicEventTypes = [
+    { name: "page_view", label: "Page Views", count: activityCounts.page_view || 0, color: "bg-blue-50 text-blue-600" },
+    { name: "user_engagement", label: "Active Engagement", count: activityCounts.user_engagement || 0, color: "bg-emerald-50 text-emerald-600" },
+    { name: "click", label: "CTA & Phone Clicks", count: activityCounts.click || 0, color: "bg-purple-50 text-purple-600" },
+    { name: "form_submit", label: "Estimate Form Submissions", count: activityCounts.form_submit || 0, color: "bg-amber-50 text-amber-600" },
+  ];
 
   const timeSeries = data?.timeSeries || [];
   const maxVal = Math.max(...timeSeries.map((d) => d.value), 10);
@@ -225,10 +190,7 @@ export default function AnalyticsPage() {
     ? `${pathD} L ${points[points.length - 1].x} ${height - paddingY} L ${points[0].x} ${height - paddingY} Z`
     : "";
 
-  const filteredEvents = RECENT_ACTIVITY_ITEMS.filter((item) => {
-    if (activeFilter === "all") return true;
-    return item.event === activeFilter;
-  });
+  const filteredEvents = activityEvents;
 
   return (
     <div className="space-y-6 w-full">
@@ -504,7 +466,7 @@ export default function AnalyticsPage() {
         <div className="space-y-6">
           {/* 4 Event Type Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-            {EVENT_TYPES.map((et) => (
+            {dynamicEventTypes.map((et) => (
               <div key={et.name} className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs">
                 <div className="flex items-center justify-between text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
                   <span>{et.label}</span>
@@ -513,9 +475,9 @@ export default function AnalyticsPage() {
                   </span>
                 </div>
                 <div className="text-3xl font-bold text-slate-900 font-heading">
-                  {et.count}
+                  {activityLoading ? "..." : et.count}
                 </div>
-                <p className="mt-2 text-xs text-emerald-600 font-medium">{et.change} vs previous 30d</p>
+                <p className="mt-2 text-xs text-slate-400 font-medium">Real-time telemetry</p>
               </div>
             ))}
           </div>
@@ -551,7 +513,11 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            {activityLoading ? (
+              <p className="text-xs text-slate-400 py-12 text-center">Loading activity logs...</p>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
                   <tr>
@@ -607,7 +573,7 @@ export default function AnalyticsPage() {
                         </td>
 
                         <td className="px-6 py-4 text-right font-medium text-slate-400 whitespace-nowrap">
-                          {item.time}
+                          {item.timeAgo || item.time || "Just now"}
                         </td>
                       </tr>
                     );
@@ -617,9 +583,12 @@ export default function AnalyticsPage() {
             </div>
 
             {filteredEvents.length === 0 && (
-              <div className="p-8 text-center text-xs text-slate-400">
-                No events found matching this filter.
+              <div className="p-12 text-center text-xs text-slate-400 space-y-1.5">
+                <p className="font-semibold text-slate-600 text-sm">No live activity recorded yet</p>
+                <p className="max-w-md mx-auto">Live user events (contact inquiries, consultation requests, clicks) will appear here in real-time as visitors interact with the site.</p>
               </div>
+            )}
+            </>
             )}
           </div>
         </div>

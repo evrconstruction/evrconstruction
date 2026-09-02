@@ -28,6 +28,14 @@ export interface GSCReportResult {
   keywords: GSCKeywordItem[];
 }
 
+export interface TrackedKeywordDoc {
+  id: string;
+  keyword: string;
+  category?: string;
+  targetLocation?: string;
+  createdAt: string;
+}
+
 export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
   let siteUrl = "https://evrconstructions.com";
 
@@ -41,7 +49,24 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
     console.warn("Failed to read Search Console config:", err);
   }
 
-  // Mint scoped access token for Google Search Console API
+  // 1. Fetch user-tracked keywords from Firestore
+  let trackedKeywords: TrackedKeywordDoc[] = [];
+  try {
+    const trackedSnap = await adminDb.collection("tracked_keywords").orderBy("createdAt", "desc").get();
+    trackedKeywords = trackedSnap.docs.map((d) => ({
+      id: d.id,
+      keyword: (d.data().keyword || "").toLowerCase(),
+      category: d.data().category || "General",
+      targetLocation: d.data().targetLocation || "East Tennessee",
+      createdAt: d.data().createdAt || new Date().toISOString(),
+    }));
+  } catch (err) {
+    console.warn("Failed to read Firestore tracked_keywords:", err);
+  }
+
+  // 2. Fetch live Search Console analytics
+  const gscQueriesMap = new Map<string, { position: number; clicks: number; impressions: number; ctr: number }>();
+
   const token = await getGoogleAccessToken([
     "https://www.googleapis.com/auth/webmasters.readonly",
   ]);
@@ -71,30 +96,16 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
       if (res.ok) {
         const json = await res.json();
         const rows = json.rows || [];
-
-        if (rows.length > 0) {
-          const keywords: GSCKeywordItem[] = rows.map((r: { keys: string[]; position: number; clicks: number; impressions: number; ctr: number }, idx: number) => ({
-            id: `gsc-${idx}`,
-            keyword: r.keys[0] || "",
-            lang: "EN",
-            position: Math.round(r.position),
-            volume: Math.round(r.impressions),
-            trend: r.position <= 10 ? "↑ Top 10" : "↑ Page 2 Opportunity",
-            clicks: r.clicks,
-            impressions: r.impressions,
-            ctr: `${(r.ctr * 100).toFixed(1)}%`,
-          }));
-
-          const total = keywords.length;
-          const top10 = keywords.filter((k) => k.position <= 10).length;
-          const top20 = keywords.filter((k) => k.position <= 20).length;
-          const top50 = keywords.filter((k) => k.position <= 50).length;
-
-          return {
-            stats: { total, top10, top20, top50 },
-            changes: { improved: top10, declined: 0, stable: Math.max(0, total - top10) },
-            keywords,
-          };
+        for (const r of rows) {
+          const query = (r.keys?.[0] || "").toLowerCase().trim();
+          if (query) {
+            gscQueriesMap.set(query, {
+              position: Math.round(r.position),
+              clicks: r.clicks || 0,
+              impressions: r.impressions || 0,
+              ctr: r.ctr || 0,
+            });
+          }
         }
       }
     } catch (apiErr) {
@@ -102,10 +113,69 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
     }
   }
 
-  // Clean Zero-State (Fresh start awaiting Search Console crawler processing)
+  // 3. Build unified keyword list
+  const combinedKeywords: GSCKeywordItem[] = [];
+  const handledQueries = new Set<string>();
+
+  // Add tracked keywords first
+  for (const tk of trackedKeywords) {
+    const query = tk.keyword.toLowerCase();
+    handledQueries.add(query);
+    const gscData = gscQueriesMap.get(query);
+
+    if (gscData) {
+      combinedKeywords.push({
+        id: tk.id,
+        keyword: tk.keyword,
+        lang: "EN",
+        position: gscData.position,
+        volume: gscData.impressions,
+        trend: gscData.position <= 10 ? "↑ Top 10" : "↑ Page 2 Opportunity",
+        clicks: gscData.clicks,
+        impressions: gscData.impressions,
+        ctr: `${(gscData.ctr * 100).toFixed(1)}%`,
+      });
+    } else {
+      combinedKeywords.push({
+        id: tk.id,
+        keyword: tk.keyword,
+        lang: "EN",
+        position: 0,
+        volume: 0,
+        trend: "Target (Pending Indexing)",
+        clicks: 0,
+        impressions: 0,
+        ctr: "--",
+      });
+    }
+  }
+
+  // Add remaining GSC queries not explicitly tracked yet
+  gscQueriesMap.forEach((gscData, query) => {
+    if (!handledQueries.has(query)) {
+      combinedKeywords.push({
+        id: `gsc-${encodeURIComponent(query)}`,
+        keyword: query,
+        lang: "EN",
+        position: gscData.position,
+        volume: gscData.impressions,
+        trend: gscData.position <= 10 ? "↑ Top 10" : "↑ Page 2 Opportunity",
+        clicks: gscData.clicks,
+        impressions: gscData.impressions,
+        ctr: `${(gscData.ctr * 100).toFixed(1)}%`,
+      });
+    }
+  });
+
+  const total = combinedKeywords.length;
+  const indexed = combinedKeywords.filter((k) => k.position > 0);
+  const top10 = indexed.filter((k) => k.position <= 10).length;
+  const top20 = indexed.filter((k) => k.position <= 20).length;
+  const top50 = indexed.filter((k) => k.position <= 50).length;
+
   return {
-    stats: { total: 0, top10: 0, top20: 0, top50: 0 },
-    changes: { improved: 0, declined: 0, stable: 0 },
-    keywords: [],
+    stats: { total, top10, top20, top50 },
+    changes: { improved: top10, declined: 0, stable: Math.max(0, indexed.length - top10) },
+    keywords: combinedKeywords,
   };
 }

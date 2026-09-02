@@ -1,4 +1,5 @@
-import { getApps, initializeApp, cert, applicationDefault, App } from "firebase-admin/app";
+import { getApps, initializeApp, cert, applicationDefault } from "firebase-admin/app";
+import type { App } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { getAuth } from "firebase-admin/auth";
@@ -6,29 +7,40 @@ import { getAuth } from "firebase-admin/auth";
 const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "evrconstruction-5f7bd";
 const STORAGE_BUCKET = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "evrconstruction-5f7bd.firebasestorage.app";
 
+const GLOBAL_ADMIN_KEY = "__EVR_ADMIN_APP__";
+const globalStore = global as unknown as { [GLOBAL_ADMIN_KEY]?: App };
+
 function getAdminApp(): App {
+  if (globalStore[GLOBAL_ADMIN_KEY]) {
+    return globalStore[GLOBAL_ADMIN_KEY]!;
+  }
+
   const existingApps = getApps();
   if (existingApps.length > 0) {
+    globalStore[GLOBAL_ADMIN_KEY] = existingApps[0]!;
     return existingApps[0]!;
   }
 
-  const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  const adminKey = process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_KEY;
   let credential = applicationDefault();
 
-  if (serviceAccountKey) {
+  if (adminKey) {
     try {
-      const parsed = JSON.parse(serviceAccountKey);
+      const parsed = JSON.parse(adminKey);
       credential = cert(parsed);
     } catch (e) {
-      console.warn("Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY, using ADC:", e);
+      console.warn("Failed to parse FIREBASE_ADMIN_SERVICE_ACCOUNT_KEY, using ADC:", e);
     }
   }
 
-  return initializeApp({
+  const app = initializeApp({
     credential,
     projectId: PROJECT_ID,
     storageBucket: STORAGE_BUCKET,
   });
+
+  globalStore[GLOBAL_ADMIN_KEY] = app;
+  return app;
 }
 
 const adminApp = getAdminApp();
@@ -36,3 +48,5 @@ const adminApp = getAdminApp();
 export const adminAuth = getAuth(adminApp);
 export const adminDb = getFirestore(adminApp);
 export const adminStorage = getStorage(adminApp);
+
+

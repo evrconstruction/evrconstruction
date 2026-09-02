@@ -34,36 +34,62 @@ export default function BacklinksPage() {
     };
   }, []);
 
-  function handleVerifyAll() {
+  async function handleVerifyAll() {
     setVerifying(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/admin/backlinks/verify", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.backlinks) {
+          setBacklinks(data.backlinks);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to verify backlinks:", err);
+    } finally {
       setVerifying(false);
-      const today = new Date().toLocaleDateString("en-US");
-      setBacklinks(backlinks.map((b) => ({ ...b, lastVerified: today })));
-    }, 800);
+    }
   }
 
-  function handleAddBacklink(e: React.FormEvent) {
+  async function handleAddBacklink(e: React.FormEvent) {
     e.preventDefault();
     if (!newUrl.trim()) return;
 
-    const newItem: BacklinkItem = {
-      id: `bl-${Date.now()}`,
-      sourceUrl: newUrl.trim(),
-      title: newTitle.trim() || newUrl.trim(),
-      status: "Active",
-      type: "DoFollow",
-      lastVerified: new Date().toLocaleDateString("en-US"),
-    };
+    try {
+      const res = await fetch("/api/admin/backlinks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceUrl: newUrl.trim(),
+          title: newTitle.trim() || newUrl.trim(),
+        }),
+      });
 
-    setBacklinks([newItem, ...backlinks]);
-    setNewUrl("");
-    setNewTitle("");
-    setShowAddModal(false);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.backlink) {
+          setBacklinks((prev) => [data.backlink, ...prev]);
+        }
+        setNewUrl("");
+        setNewTitle("");
+        setShowAddModal(false);
+      }
+    } catch (err) {
+      console.error("Failed to add backlink:", err);
+    }
   }
 
-  function handleRemoveBacklink(id: string) {
-    setBacklinks(backlinks.filter((b) => b.id !== id));
+  async function handleRemoveBacklink(id: string) {
+    try {
+      const res = await fetch(`/api/admin/backlinks?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setBacklinks((prev) => prev.filter((b) => b.id !== id));
+      }
+    } catch (err) {
+      console.error("Failed to delete backlink:", err);
+    }
   }
 
   return (
@@ -244,6 +270,22 @@ export default function BacklinksPage() {
               </tbody>
             </table>
           </div>
+
+          {backlinks.length === 0 && (
+            <div className="p-12 text-center text-xs text-slate-400 space-y-3">
+              <p className="font-semibold text-slate-600 text-sm">No monitored backlinks yet</p>
+              <p className="max-w-md mx-auto">
+                Add referring directory listings (BBB, Yelp, Nextdoor, local chambers, supplier profiles) to monitor active status and link health.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="rounded-lg bg-[#1f2521] px-4 py-2 text-xs font-bold text-white hover:bg-[#2c352f] cursor-pointer"
+              >
+                + Add Backlink
+              </button>
+            </div>
+          )}
         </div>
       )}
 

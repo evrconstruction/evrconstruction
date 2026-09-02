@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import type { ProjectPost } from "@/lib/posts-store";
-import { generatePostGeoEnhancements } from "@/lib/seo-agent/skills/saturday-post-enhancer";
+import { generatePostGeoEnhancements } from "@/lib/geo-enhancements";
 
 const CATEGORIES = ["Decks", "Gazebos", "Restoration", "Remodeling", "Carpentry", "Patios"] as const;
 
@@ -230,7 +230,7 @@ export default function PostsManagerPage() {
           <p className="text-xs text-slate-400 py-8 text-center">Loading project posts...</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {posts.map((post) => (
+            {posts.map((post, index) => (
               <div
                 key={post.id}
                 className="group rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs hover:border-[#f4b400] transition-all flex flex-col justify-between"
@@ -242,6 +242,7 @@ export default function PostsManagerPage() {
                       src={post.src}
                       alt={post.alt}
                       fill
+                      priority={index < 4}
                       sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw"
                       className="object-cover transition-transform duration-300 group-hover:scale-105"
                     />
@@ -306,6 +307,7 @@ export default function PostsManagerPage() {
                       src={imagePreview}
                       alt="Preview"
                       fill
+                      sizes="(max-width: 768px) 100vw, 500px"
                       className="object-cover"
                     />
                     <button
