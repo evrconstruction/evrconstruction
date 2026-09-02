@@ -150,18 +150,23 @@ export async function DELETE(request: Request) {
         const data = doc.data();
         if (data?.src && typeof data.src === "string") {
           const bucket = adminStorage.bucket();
-          if (data.src.includes("firebasestorage.googleapis.com")) {
-            const match = data.src.match(/\/o\/([^?]+)/);
-            if (match && match[1]) {
-              const fileName = decodeURIComponent(match[1]);
-              await bucket.file(fileName).delete().catch(() => {});
+          try {
+            const parsedUrl = new URL(data.src);
+            if (parsedUrl.hostname === "firebasestorage.googleapis.com") {
+              const match = parsedUrl.pathname.match(/\/o\/([^?]+)/);
+              if (match && match[1]) {
+                const fileName = decodeURIComponent(match[1]);
+                await bucket.file(fileName).delete().catch(() => {});
+              }
+            } else if (parsedUrl.hostname === "storage.googleapis.com") {
+              const parts = data.src.split(`${bucket.name}/`);
+              if (parts[1]) {
+                const fileName = decodeURIComponent(parts[1]);
+                await bucket.file(fileName).delete().catch(() => {});
+              }
             }
-          } else if (data.src.includes("storage.googleapis.com")) {
-            const parts = data.src.split(`${bucket.name}/`);
-            if (parts[1]) {
-              const fileName = decodeURIComponent(parts[1]);
-              await bucket.file(fileName).delete().catch(() => {});
-            }
+          } catch {
+            // Not a valid URL, skip storage file deletion
           }
         }
         await docRef.delete();
