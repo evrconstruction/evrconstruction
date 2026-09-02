@@ -19,8 +19,7 @@ const app = typeof window !== "undefined"
   : ({} as FirebaseApp);
 
 const auth = typeof window !== "undefined" ? getAuth(app) : ({} as Auth);
-// Named database: evrconstructions
-const db = typeof window !== "undefined" ? getFirestore(app, "evrconstructions") : ({} as Firestore);
+const db = typeof window !== "undefined" ? getFirestore(app) : ({} as Firestore);
 const storage = typeof window !== "undefined" ? getStorage(app) : ({} as FirebaseStorage);
 
 export { app, auth, db, storage };

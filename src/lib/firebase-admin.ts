@@ -4,7 +4,6 @@ import { getStorage } from "firebase-admin/storage";
 import { getAuth } from "firebase-admin/auth";
 
 const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "evrconstruction-5f7bd";
-const DATABASE_ID = "evrconstructions";
 const STORAGE_BUCKET = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "evrconstruction-5f7bd.firebasestorage.app";
 
 function getAdminApp(): App {
@@ -35,5 +34,5 @@ function getAdminApp(): App {
 const adminApp = getAdminApp();
 
 export const adminAuth = getAuth(adminApp);
-export const adminDb = getFirestore(adminApp, DATABASE_ID);
+export const adminDb = getFirestore(adminApp);
 export const adminStorage = getStorage(adminApp);
