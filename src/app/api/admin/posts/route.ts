@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb, adminStorage } from "@/lib/firebase-admin";
-import { INITIAL_PROJECT_POSTS, ProjectPost } from "@/lib/posts-store";
+import { ProjectPost } from "@/lib/posts-store";
 import { verifyAdminSession } from "@/lib/auth-guard";
 
 const POSTS_COLLECTION = "posts";
@@ -13,36 +13,20 @@ export async function GET() {
   }
 
   try {
-    let snapshot = await adminDb
+    const snapshot = await adminDb
       .collection(POSTS_COLLECTION)
       .orderBy("createdAt", "desc")
       .get();
-
-    // If Firestore posts collection is empty, auto-seed with initial posts
-    if (snapshot.empty) {
-      const batch = adminDb.batch();
-      for (const post of INITIAL_PROJECT_POSTS) {
-        const { id, ...data } = post;
-        const ref = adminDb.collection(POSTS_COLLECTION).doc(id);
-        batch.set(ref, data);
-      }
-      await batch.commit();
-
-      snapshot = await adminDb
-        .collection(POSTS_COLLECTION)
-        .orderBy("createdAt", "desc")
-        .get();
-    }
 
     const posts: ProjectPost[] = snapshot.docs.map((doc) => {
       const data = doc.data();
       return {
         id: doc.id,
         category: data.category || "Decks",
-        src: data.src || "/images/deck-4.jpg",
+        src: data.src || "",
         alt: data.alt || "",
         caption: data.caption || "",
-        createdAt: data.createdAt || new Date().toISOString().split("T")[0],
+        createdAt: data.createdAt || "",
         published: data.published ?? true,
       };
     });
@@ -56,9 +40,9 @@ export async function GET() {
     console.error("Firestore fetch error:", err);
     return NextResponse.json(
       {
-        posts: INITIAL_PROJECT_POSTS,
-        total: INITIAL_PROJECT_POSTS.length,
-        source: "local-fallback",
+        posts: [],
+        total: 0,
+        source: "firestore-error",
         error: err instanceof Error ? err.message : "Database fetch failed",
       },
       { status: 500 }

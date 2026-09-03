@@ -21,7 +21,7 @@ function getAdminApp(): App {
     return existingApps[0]!;
   }
 
-  const adminKey = process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_KEY;
+  const adminKey = process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_KEY || process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
   let credential = applicationDefault();
 
   if (adminKey) {
@@ -29,7 +29,7 @@ function getAdminApp(): App {
       const parsed = JSON.parse(adminKey);
       credential = cert(parsed);
     } catch (e) {
-      console.warn("Failed to parse FIREBASE_ADMIN_SERVICE_ACCOUNT_KEY, using ADC:", e);
+      console.warn("Failed to parse Firebase admin service account key, using ADC:", e);
     }
   }
 
