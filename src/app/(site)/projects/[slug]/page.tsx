@@ -25,9 +25,27 @@ export async function generateMetadata({ params }: ServicePageProps): Promise<Me
     return { title: "Project Collection" };
   }
 
+  const pageUrl = `https://evrconstructions.com/projects/${slug}`;
+
   return {
     title: `${service.title} Projects`,
     description: service.summary,
+    alternates: {
+      canonical: pageUrl,
+    },
+    openGraph: {
+      title: `${service.title} Projects | EVR Construction LLC`,
+      description: service.summary,
+      url: pageUrl,
+      images: [
+        {
+          url: service.image,
+          width: 1200,
+          height: 800,
+          alt: `${service.title} by EVR Construction LLC`,
+        },
+      ],
+    },
   };
 }
 

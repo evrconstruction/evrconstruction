@@ -1,6 +1,7 @@
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { SITE } from "@/lib/site";
+import { SERVICES } from "@/lib/services";
 import type { ReactNode } from "react";
 
 const localBusinessJsonLd = {
@@ -17,6 +18,20 @@ const localBusinessJsonLd = {
     "@type": "City",
     name: city,
   })),
+  hasOfferCatalog: {
+    "@type": "OfferCatalog",
+    name: "EVR Construction Services",
+    itemListElement: SERVICES.map((service, index) => ({
+      "@type": "Offer",
+      position: index + 1,
+      itemOffered: {
+        "@type": "Service",
+        name: service.title,
+        description: service.summary,
+        url: `https://evrconstructions.com/projects/${service.slug}`,
+      },
+    })),
+  },
   contactPoint: [
     {
       "@type": "ContactPoint",
@@ -47,8 +62,20 @@ const localBusinessJsonLd = {
       dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
       opens: "07:00",
       closes: "18:00",
-    }
+    },
   ],
+};
+
+const siteNavigationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  itemListElement: SERVICES.map((service, index) => ({
+    "@type": "SiteNavigationElement",
+    position: index + 1,
+    name: service.title,
+    description: service.summary,
+    url: `https://evrconstructions.com/projects/${service.slug}`,
+  })),
 };
 
 export default function SiteLayout({ children }: { children: ReactNode }) {
@@ -57,6 +84,10 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(siteNavigationJsonLd) }}
       />
       <Header />
       <main className="flex-1">{children}</main>

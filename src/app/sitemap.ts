@@ -6,19 +6,40 @@ export const dynamic = "force-static";
 const SITE_URL = "https://evrconstructions.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const staticRoutes = ["", "/about", "/contact", "/projects"].map((path) => ({
-    url: `${SITE_URL}${path}`,
-    lastModified: new Date(),
-    changeFrequency: "monthly" as const,
-    priority: path === "" ? 1 : 0.8,
-  }));
+  const staticRoutes = [
+    {
+      url: SITE_URL,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 1.0,
+    },
+    {
+      url: `${SITE_URL}/projects`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.85,
+    },
+    {
+      url: `${SITE_URL}/about`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/contact`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    },
+  ];
 
-  const projectRoutes = SERVICES.map((service) => ({
+  // The 6 core service landing pages — high priority for Google Sitelinks
+  const serviceRoutes = SERVICES.map((service) => ({
     url: `${SITE_URL}/projects/${service.slug}`,
     lastModified: new Date(),
-    changeFrequency: "monthly" as const,
-    priority: 0.7,
+    changeFrequency: "weekly" as const,
+    priority: 0.9,
   }));
 
-  return [...staticRoutes, ...projectRoutes];
+  return [...staticRoutes, ...serviceRoutes];
 }
