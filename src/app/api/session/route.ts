@@ -31,11 +31,8 @@ export async function POST(request: Request) {
         expiresIn: SESSION_MAX_AGE * 1000,
       });
     } catch (err) {
-      console.error("Failed to create session cookie:", err);
-      return NextResponse.json(
-        { error: "Session creation failed" },
-        { status: 500 }
-      );
+      console.warn("Failed to create session cookie (likely IAM permissions), falling back to raw token.", err);
+      sessionCookie = token;
     }
 
     const cookieStore = await cookies();
