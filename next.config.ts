@@ -41,6 +41,18 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      {
+        source: "/admin/posts/:filename(.*\\.(?:jpg|jpeg|png|webp|avif))",
+        destination: "/images/:filename",
+      },
+      {
+        source: "/posts/:filename(.*\\.(?:jpg|jpeg|png|webp|avif))",
+        destination: "/images/:filename",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
