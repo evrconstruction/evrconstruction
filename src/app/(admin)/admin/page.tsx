@@ -19,14 +19,7 @@ interface OverviewState {
 
 function resolveImageSrc(src: string | undefined): string {
   if (!src) return "/images/hero.jpg";
-  if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("data:")) {
-    return src;
-  }
-  let clean = src.startsWith("/") ? src : `/${src}`;
-  if (clean.startsWith("/posts/")) {
-    clean = clean.replace(/^\/posts\//, "/images/");
-  }
-  return clean;
+  return src;
 }
 
 export default function AdminOverviewPage() {

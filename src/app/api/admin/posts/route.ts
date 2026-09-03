@@ -1,12 +1,57 @@
 import { NextResponse } from "next/server";
 import { adminDb, adminStorage } from "@/lib/firebase-admin";
-import { getDownloadURL } from "firebase-admin/storage";
 import { ProjectPost } from "@/lib/posts-store";
 import { verifyAdminSession } from "@/lib/auth-guard";
-import fs from "fs";
-import path from "path";
 
 const POSTS_COLLECTION = "posts";
+
+/**
+ * Converts a Firestore `src` value into a URL the browser can load.
+ *
+ * Firestore stores either:
+ *   - A raw storage path: "posts/deck-4.jpg"
+ *   - A Firebase Storage URL from a previous getDownloadURL call:
+ *     "https://firebasestorage.googleapis.com/v0/b/.../o/posts%2Fdeck-4.jpg?alt=media&token=..."
+ *
+ * Because App Check is enforced on the bucket, direct Firebase Storage
+ * URLs return 401 in the browser. We route everything through our own
+ * image proxy at /api/images/[...path] which uses the Admin SDK.
+ */
+function resolveStorageSrc(src: string): string {
+  if (!src) return "/images/hero.jpg";
+
+  // Already a proxy URL
+  if (src.startsWith("/api/images/")) return src;
+
+  // Firebase Storage URL → extract the storage path
+  if (src.includes("firebasestorage.googleapis.com")) {
+    try {
+      const url = new URL(src);
+      const match = url.pathname.match(/\/o\/([^?]+)/);
+      if (match?.[1]) {
+        const storagePath = decodeURIComponent(match[1]);
+        if (storagePath.startsWith("posts/")) {
+          return `/api/images/${storagePath}`;
+        }
+      }
+    } catch {
+      // Fall through to path-based resolution
+    }
+  }
+
+  // Raw storage path (e.g. "posts/deck-4.jpg")
+  if (!src.startsWith("http://") && !src.startsWith("https://") && !src.startsWith("data:")) {
+    const clean = src.startsWith("/") ? src.slice(1) : src;
+    if (clean.startsWith("posts/")) {
+      return `/api/images/${clean}`;
+    }
+    // Legacy path without posts/ prefix
+    return `/api/images/posts/${clean}`;
+  }
+
+  // Any other URL (unlikely) — pass through
+  return src;
+}
 
 export async function GET() {
   try {
@@ -21,64 +66,18 @@ export async function GET() {
       .orderBy("createdAt", "desc")
       .get();
 
-    const posts: ProjectPost[] = await Promise.all(
-      snapshot.docs.map(async (doc) => {
-        const data = doc.data();
-        let src = data.src || "";
-
-        // If src is a storage path (e.g. posts/deck-6.jpg, or not a full URL)
-        if (src && !src.startsWith("http://") && !src.startsWith("https://") && !src.startsWith("data:")) {
-          try {
-            const bucket = adminStorage.bucket();
-            const storagePath = src.startsWith("/") ? src.slice(1) : src;
-            const file = bucket.file(storagePath);
-            const [exists] = await file.exists().catch(() => [false]);
-
-            if (!exists) {
-              const fileName = path.basename(storagePath);
-              const possiblePaths = [
-                path.join(process.cwd(), "public", "images", fileName),
-                path.join(process.cwd(), "public", "images", fileName.replace(/\.jpg$/, ".jpeg")),
-                path.join(process.cwd(), "public", "images", fileName.replace(/\.jpeg$/, ".jpg")),
-              ];
-              for (const p of possiblePaths) {
-                if (fs.existsSync(p)) {
-                  const buffer = fs.readFileSync(p);
-                  const mimeType = fileName.endsWith(".png") ? "image/png" : "image/jpeg";
-                  await file.save(buffer, {
-                    metadata: {
-                      contentType: mimeType,
-                      cacheControl: "public, max-age=31536000",
-                    },
-                  });
-                  break;
-                }
-              }
-            }
-
-            const downloadUrl = await getDownloadURL(file);
-            src = downloadUrl;
-
-            // Persist the full Firebase Storage URL to Firestore
-            doc.ref.update({ src: downloadUrl }).catch(() => {});
-          } catch (storageErr) {
-            console.warn(`Storage URL resolution fallback for ${src}:`, storageErr);
-            const filename = src.replace(/^\/?(posts|images)\//, "");
-            src = `/images/${filename}`;
-          }
-        }
-
-        return {
-          id: doc.id,
-          category: data.category || "Decks",
-          src: src || "/images/hero.jpg",
-          alt: data.alt || data.caption || "",
-          caption: data.caption || "",
-          createdAt: data.createdAt || "",
-          published: data.published ?? true,
-        };
-      })
-    );
+    const posts: ProjectPost[] = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        category: data.category || "Decks",
+        src: resolveStorageSrc(data.src || ""),
+        alt: data.alt || data.caption || "",
+        caption: data.caption || "",
+        createdAt: data.createdAt || "",
+        published: data.published ?? true,
+      };
+    });
 
     return NextResponse.json({
       posts,
@@ -117,12 +116,12 @@ export async function POST(request: Request) {
       );
     }
 
-    let publicImageUrl = src;
+    let storagePath = "";
 
     // If image is base64, upload to Firebase Cloud Storage
     if (src.startsWith("data:image")) {
       try {
-        const matches = src.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        const matches = src.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
         if (matches && matches.length === 3) {
           const mimeType = matches[1];
           const base64Data = matches[2];
@@ -139,22 +138,17 @@ export async function POST(request: Request) {
           }
 
           const extension = mimeType.split("/")[1] || "jpg";
-          const fileName = `posts/project-${Date.now()}.${extension}`;
+          storagePath = `posts/project-${Date.now()}.${extension}`;
 
           const bucket = adminStorage.bucket();
-          const file = bucket.file(fileName);
+          const file = bucket.file(storagePath);
 
           await file.save(buffer, {
             metadata: {
               contentType: mimeType,
               cacheControl: "public, max-age=31536000",
             },
-            public: true,
           });
-
-          // Obtain official Firebase Storage download URL with token
-          const downloadUrl = await getDownloadURL(file);
-          publicImageUrl = downloadUrl;
         }
       } catch (storageErr) {
         console.error("Cloud Storage upload failed:", storageErr);
@@ -165,9 +159,10 @@ export async function POST(request: Request) {
       }
     }
 
+    // Store the raw storage path in Firestore (the GET handler resolves it to a proxy URL)
     const newPostData: Omit<ProjectPost, "id"> = {
       category: category || "Decks",
-      src: publicImageUrl,
+      src: storagePath || src,
       alt: alt || caption,
       caption: caption.trim(),
       createdAt: new Date().toISOString().split("T")[0],
@@ -179,6 +174,8 @@ export async function POST(request: Request) {
     const savedPost: ProjectPost = {
       id: docRef.id,
       ...newPostData,
+      // Return the proxy URL to the client so it renders immediately
+      src: resolveStorageSrc(newPostData.src),
     };
 
     return NextResponse.json({ status: "ok", post: savedPost });
@@ -204,7 +201,6 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Missing post id" }, { status: 400 });
     }
 
-    // Check if post exists and has a storage image to clean up
     try {
       const docRef = adminDb.collection(POSTS_COLLECTION).doc(id);
       const doc = await docRef.get();
@@ -212,28 +208,27 @@ export async function DELETE(request: Request) {
         const data = doc.data();
         if (data?.src && typeof data.src === "string") {
           const bucket = adminStorage.bucket();
-          try {
-            const parsedUrl = new URL(data.src);
-            let fileName = "";
+          let fileName = "";
 
-            if (parsedUrl.hostname === "firebasestorage.googleapis.com") {
+          // Extract storage path from various src formats
+          if (data.src.includes("firebasestorage.googleapis.com")) {
+            try {
+              const parsedUrl = new URL(data.src);
               const match = parsedUrl.pathname.match(/\/o\/([^?]+)/);
-              if (match && match[1]) {
+              if (match?.[1]) {
                 fileName = decodeURIComponent(match[1]);
               }
-            } else if (parsedUrl.hostname === "storage.googleapis.com") {
-              const pathParts = parsedUrl.pathname.split(`/${bucket.name}/`);
-              if (pathParts.length > 1 && pathParts[1]) {
-                fileName = decodeURIComponent(pathParts[1]);
-              }
+            } catch {
+              // Not a valid URL
             }
+          } else if (!data.src.startsWith("http") && !data.src.startsWith("data:")) {
+            // Raw storage path
+            fileName = data.src.startsWith("/") ? data.src.slice(1) : data.src;
+          }
 
-            // CodeQL sanitization: strict prefix enforcement and path traversal prevention
-            if (fileName && fileName.startsWith("posts/") && !fileName.includes("..")) {
-              await bucket.file(fileName).delete().catch(() => {});
-            }
-          } catch {
-            // Not a valid URL, skip storage file deletion
+          // Security: strict prefix enforcement and path traversal prevention
+          if (fileName && fileName.startsWith("posts/") && !fileName.includes("..")) {
+            await bucket.file(fileName).delete().catch(() => {});
           }
         }
         await docRef.delete();
@@ -252,4 +247,3 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
-
