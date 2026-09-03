@@ -27,3 +27,5 @@ env:
     value: 1:573736586147:web:f2ece9a7f6a910e72c6816
   - variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
     value: G-19DRNQBM8T
+  - variable: CRON_SECRET
+    value: 0b61b9e68a8893b749a1c8dcb76ceb2e2e1f7513b3ee98ee4f534e6a83620711

@@ -1,0 +1,30 @@
+name: SEO Agent Daily Automation
+
+on:
+  schedule:
+    # Runs at 08:00 UTC (4:00 AM Eastern Time) every day
+    - cron: '0 8 * * *'
+  workflow_dispatch: # Allows manual one-click testing from GitHub Actions tab
+
+jobs:
+  run-seo-agent:
+    name: Execute Daily SEO Agent Skill
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Daily SEO Skill via Secure Bearer Token
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST https://evrconstructions.com/api/admin/seo-agent/run \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -d '{"skillId": "today"}')
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          echo "HTTP Status Code: $HTTP_CODE"
+          echo "Response Body: $BODY"
+          
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "::error::SEO Agent run failed with status $HTTP_CODE"
+            exit 1
+          fi

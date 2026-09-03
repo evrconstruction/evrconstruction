@@ -274,9 +274,24 @@ export async function runAllSkills(): Promise<{ success: boolean; totalRuns: num
   return { success: true, totalRuns: logs.length, logs };
 }
 
+export function getTodaysSkillId(): string {
+  const dayIndex = new Date().getDay();
+  const dayMap = [
+    "skill-sunday",
+    "skill-monday",
+    "skill-tuesday",
+    "skill-wednesday",
+    "skill-thursday",
+    "skill-friday",
+    "skill-saturday",
+  ];
+  return dayMap[dayIndex];
+}
+
 export const runAgentExecution = async (skillId?: string) => {
-  if (skillId) {
-    const res = await runSkill(skillId);
+  const targetId = (skillId === "today" || skillId === "auto") ? getTodaysSkillId() : skillId;
+  if (targetId) {
+    const res = await runSkill(targetId);
     return { success: true, logs: [res.log], totalRuns: 1 };
   }
   return runAllSkills();

@@ -3,10 +3,16 @@ import { runAgentExecution } from "@/lib/seo-agent/orchestrator";
 import { verifyAdminSession } from "@/lib/auth-guard";
 
 export async function POST(req: Request) {
-  try {
-    await verifyAdminSession();
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const authHeader = req.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  const isCronAuth = cronSecret && authHeader === `Bearer ${cronSecret}`;
+
+  if (!isCronAuth) {
+    try {
+      await verifyAdminSession();
+    } catch {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
   }
 
   try {
