@@ -48,6 +48,10 @@ const nextConfig: NextConfig = {
         destination: "/images/:filename",
       },
       {
+        source: "/brand/:filename",
+        destination: "/images/:filename",
+      },
+      {
         source: "/posts/:filename(.*\\.(?:jpg|jpeg|png|webp|avif))",
         destination: "/images/:filename",
       },

@@ -9,11 +9,12 @@ export function Footer() {
       <div className="mx-auto grid max-w-7xl justify-items-center gap-10 px-4 py-14 text-center sm:px-6 md:grid-cols-4 md:justify-items-start md:text-left lg:px-8">
         <div>
           <Image
-            src="/brand/logo.png"
+            src="/images/logo.png"
             alt={`${SITE.name} logo`}
             width={512}
             height={332}
             className="mx-auto h-32 w-auto md:mx-0"
+            unoptimized
           />
           <p className="mt-4 max-w-xs text-sm leading-6 text-white/70">
             Specializing in decks, gazebos, railings, and all types of
