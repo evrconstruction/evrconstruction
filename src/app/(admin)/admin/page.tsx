@@ -79,9 +79,7 @@ export default function AdminOverviewPage() {
     };
   }, [dateRange]);
 
-  const maxVal = state.timeSeries.length > 0
-    ? Math.max(...state.timeSeries.map((d) => d.value), 1)
-    : 1;
+  const maxVal = Math.max(...state.timeSeries.map((d) => d.value), 5);
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
@@ -193,21 +191,24 @@ export default function AdminOverviewPage() {
           </div>
 
           {state.timeSeries.length > 0 ? (
-            <div className="h-56 w-full flex items-end gap-2 pt-4">
+            <div className="h-56 w-full flex items-end gap-1.5 pt-4">
               {state.timeSeries.map((pt, i) => {
-                const heightPct = Math.max(8, (pt.value / maxVal) * 100);
+                const isZero = pt.value === 0;
+                const heightPct = isZero ? 4 : Math.max(12, (pt.value / maxVal) * 100);
                 return (
-                  <div key={i} className="flex-1 flex flex-col items-center h-full justify-end group relative">
+                  <div key={i} className="flex-1 min-w-0 flex flex-col items-center h-full justify-end group relative">
                     <div
                       style={{ height: `${heightPct}%` }}
-                      className="w-full bg-[#f4b400]/80 group-hover:bg-[#f4b400] rounded-t transition-all"
+                      className={`w-full max-w-[18px] rounded-t transition-all ${
+                        isZero ? "bg-slate-100" : "bg-[#f4b400]/85 group-hover:bg-[#f4b400]"
+                      }`}
                     />
                     <span className="text-[9px] text-slate-400 mt-2 truncate w-full text-center">
-                      {pt.label.split("-").slice(1).join("/")}
+                      {pt.label}
                     </span>
                     {/* Tooltip */}
-                    <div className="absolute -top-7 opacity-0 group-hover:opacity-100 bg-[#1f2521] text-white text-[10px] py-0.5 px-1.5 rounded shadow pointer-events-none transition">
-                      {pt.value} visits
+                    <div className="absolute -top-7 opacity-0 group-hover:opacity-100 bg-[#1f2521] text-white text-[10px] py-0.5 px-1.5 rounded shadow pointer-events-none transition whitespace-nowrap z-10">
+                      {pt.value} {pt.value === 1 ? "visit" : "visits"}
                     </div>
                   </div>
                 );

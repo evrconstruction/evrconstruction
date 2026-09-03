@@ -111,24 +111,32 @@ export async function fetchGA4Analytics(days = 30): Promise<GA4ReportResult> {
         const conversions = parseInt(totals[6]?.value || "0", 10);
 
         const rows = json.rows || [];
-        const timeSeries = rows.map((r: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }) => {
-          const rawDate = r.dimensionValues[0]?.value || "";
-          const val = parseInt(r.metricValues[0]?.value || "0", 10);
-          const formattedDate = rawDate.length === 8 ? `${rawDate.substring(0, 4)}-${rawDate.substring(4, 6)}-${rawDate.substring(6, 8)}` : rawDate;
-          return {
-            date: formattedDate,
-            label: formattedDate,
-            value: val,
-          };
-        });
+        const dateMap = new Map<string, number>();
+        for (const r of rows) {
+          const rawDate = r.dimensionValues?.[0]?.value || "";
+          const val = parseInt(r.metricValues?.[0]?.value || "0", 10);
+          const formattedDate = rawDate.length === 8
+            ? `${rawDate.substring(0, 4)}-${rawDate.substring(4, 6)}-${rawDate.substring(6, 8)}`
+            : rawDate;
+          if (formattedDate) dateMap.set(formattedDate, val);
+        }
 
-        // If historical batch hasn't run yet but we have realtime activity today, populate today's point
-        if (timeSeries.length === 0 && visitors > 0) {
-          const todayStr = new Date().toISOString().split("T")[0];
+        const todayStr = new Date().toISOString().split("T")[0];
+        if (realtimeActiveUsers > 0) {
+          dateMap.set(todayStr, Math.max(dateMap.get(todayStr) || 0, realtimeActiveUsers));
+        }
+
+        const timeSeries = [];
+        const timelineDays = Math.min(Math.max(days, 14), 30);
+        for (let i = timelineDays - 1; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const dStr = d.toISOString().split("T")[0];
+          const val = dateMap.get(dStr) || 0;
           timeSeries.push({
-            date: todayStr,
-            label: "Today (Live)",
-            value: visitors,
+            date: dStr,
+            label: `${d.getMonth() + 1}/${d.getDate()}`,
+            value: val,
           });
         }
 
