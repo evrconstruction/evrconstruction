@@ -22,7 +22,7 @@ export interface GA4ReportResult {
 }
 
 export async function fetchGA4Analytics(days = 30): Promise<GA4ReportResult> {
-  let propertyId = "G-19DRNQBM8T";
+  let propertyId = "552222580";
 
   try {
     const configDoc = await adminDb.collection("integrations").doc("google-analytics").get();

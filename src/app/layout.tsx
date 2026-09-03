@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Rubik, Open_Sans } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const rubik = Rubik({
@@ -52,6 +53,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${rubik.variable} ${openSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white font-body text-charcoal">
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-19DRNQBM8T"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-19DRNQBM8T');
+          `}
+        </Script>
         {children}
       </body>
     </html>
