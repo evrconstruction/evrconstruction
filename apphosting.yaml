@@ -14,7 +14,7 @@ env:
   - variable: NEXT_PUBLIC_RECAPTCHA_SITE_KEY
     value: 6LfA8aUtAAAAAK9RJDiKsWe1qg9t-ZuqsP4tjdMz
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: AIzaSyDgNOqQksOOPW3h4b7VcBVxGyb1VCxh95g
+    secret: NEXT_PUBLIC_FIREBASE_API_KEY
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
     value: evrconstruction-5f7bd.firebaseapp.com
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
