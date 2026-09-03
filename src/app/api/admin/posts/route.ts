@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { adminDb, adminStorage } from "@/lib/firebase-admin";
+import { getDownloadURL } from "firebase-admin/storage";
 import { ProjectPost } from "@/lib/posts-store";
 import { verifyAdminSession } from "@/lib/auth-guard";
+import fs from "fs";
+import path from "path";
 
 const POSTS_COLLECTION = "posts";
 
@@ -18,18 +21,64 @@ export async function GET() {
       .orderBy("createdAt", "desc")
       .get();
 
-    const posts: ProjectPost[] = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        category: data.category || "Decks",
-        src: data.src || "",
-        alt: data.alt || "",
-        caption: data.caption || "",
-        createdAt: data.createdAt || "",
-        published: data.published ?? true,
-      };
-    });
+    const posts: ProjectPost[] = await Promise.all(
+      snapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        let src = data.src || "";
+
+        // If src is a storage path (e.g. posts/deck-6.jpg, or not a full URL)
+        if (src && !src.startsWith("http://") && !src.startsWith("https://") && !src.startsWith("data:")) {
+          try {
+            const bucket = adminStorage.bucket();
+            const storagePath = src.startsWith("/") ? src.slice(1) : src;
+            const file = bucket.file(storagePath);
+            const [exists] = await file.exists().catch(() => [false]);
+
+            if (!exists) {
+              const fileName = path.basename(storagePath);
+              const possiblePaths = [
+                path.join(process.cwd(), "public", "images", fileName),
+                path.join(process.cwd(), "public", "images", fileName.replace(/\.jpg$/, ".jpeg")),
+                path.join(process.cwd(), "public", "images", fileName.replace(/\.jpeg$/, ".jpg")),
+              ];
+              for (const p of possiblePaths) {
+                if (fs.existsSync(p)) {
+                  const buffer = fs.readFileSync(p);
+                  const mimeType = fileName.endsWith(".png") ? "image/png" : "image/jpeg";
+                  await file.save(buffer, {
+                    metadata: {
+                      contentType: mimeType,
+                      cacheControl: "public, max-age=31536000",
+                    },
+                  });
+                  break;
+                }
+              }
+            }
+
+            const downloadUrl = await getDownloadURL(file);
+            src = downloadUrl;
+
+            // Persist the full Firebase Storage URL to Firestore
+            doc.ref.update({ src: downloadUrl }).catch(() => {});
+          } catch (storageErr) {
+            console.warn(`Storage URL resolution fallback for ${src}:`, storageErr);
+            const filename = src.replace(/^\/?(posts|images)\//, "");
+            src = `/images/${filename}`;
+          }
+        }
+
+        return {
+          id: doc.id,
+          category: data.category || "Decks",
+          src: src || "/images/hero.jpg",
+          alt: data.alt || data.caption || "",
+          caption: data.caption || "",
+          createdAt: data.createdAt || "",
+          published: data.published ?? true,
+        };
+      })
+    );
 
     return NextResponse.json({
       posts,
@@ -103,10 +152,9 @@ export async function POST(request: Request) {
             public: true,
           });
 
-          await file.makePublic().catch(() => {});
-
-          // Standard Firebase Storage download URL
-          publicImageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media`;
+          // Obtain official Firebase Storage download URL with token
+          const downloadUrl = await getDownloadURL(file);
+          publicImageUrl = downloadUrl;
         }
       } catch (storageErr) {
         console.error("Cloud Storage upload failed:", storageErr);

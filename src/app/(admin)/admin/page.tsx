@@ -17,6 +17,18 @@ interface OverviewState {
   loading: boolean;
 }
 
+function resolveImageSrc(src: string | undefined): string {
+  if (!src) return "/images/hero.jpg";
+  if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("data:")) {
+    return src;
+  }
+  let clean = src.startsWith("/") ? src : `/${src}`;
+  if (clean.startsWith("/posts/")) {
+    clean = clean.replace(/^\/posts\//, "/images/");
+  }
+  return clean;
+}
+
 export default function AdminOverviewPage() {
   const [state, setState] = useState<OverviewState>({
     visitors: "0",
@@ -281,7 +293,7 @@ export default function AdminOverviewPage() {
               <div key={post.id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-3 overflow-hidden">
                 <div className="relative h-32 w-full rounded-lg overflow-hidden bg-slate-200 mb-2">
                   <Image
-                    src={post.src || "/images/hero.jpg"}
+                    src={resolveImageSrc(post.src)}
                     alt={post.alt || post.caption || "Project photo"}
                     fill
                     unoptimized

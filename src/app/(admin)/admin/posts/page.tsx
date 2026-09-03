@@ -7,6 +7,18 @@ import { generatePostGeoEnhancements } from "@/lib/geo-enhancements";
 
 const CATEGORIES = ["Decks", "Gazebos", "Restoration", "Remodeling", "Carpentry", "Patios"] as const;
 
+function resolveImageSrc(src: string | undefined): string {
+  if (!src) return "/images/hero.jpg";
+  if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("data:")) {
+    return src;
+  }
+  let clean = src.startsWith("/") ? src : `/${src}`;
+  if (clean.startsWith("/posts/")) {
+    clean = clean.replace(/^\/posts\//, "/images/");
+  }
+  return clean;
+}
+
 export default function PostsManagerPage() {
   const [posts, setPosts] = useState<ProjectPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -239,7 +251,7 @@ export default function PostsManagerPage() {
                   {/* Photo Container */}
                   <div className="relative aspect-4/3 w-full bg-slate-100 overflow-hidden">
                     <Image
-                      src={post.src || "/images/hero.jpg"}
+                      src={resolveImageSrc(post.src)}
                       alt={post.alt || post.caption || "Project photo"}
                       fill
                       unoptimized
