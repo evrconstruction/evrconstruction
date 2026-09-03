@@ -18,7 +18,7 @@ export async function verifyAdminSession(): Promise<{ email: string; uid: string
     throw new Error("Not authenticated");
   }
 
-  const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+  const decoded = await adminAuth.verifySessionCookie(sessionCookie);
   const email = (decoded.email ?? "").toLowerCase();
 
   if (email !== ALLOWED_ADMIN_EMAIL.toLowerCase()) {
