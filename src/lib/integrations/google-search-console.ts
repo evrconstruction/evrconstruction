@@ -79,33 +79,42 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
       const start = startDate.toISOString().split("T")[0];
       const end = endDate.toISOString().split("T")[0];
 
-      const res = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          startDate: start,
-          endDate: end,
-          dimensions: ["query"],
-          rowLimit: 100,
-        }),
-      });
+      const candidates = [
+        siteUrl.startsWith("sc-domain:") ? siteUrl : `sc-domain:${siteUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}`,
+        siteUrl,
+        siteUrl.endsWith("/") ? siteUrl : `${siteUrl}/`,
+      ];
 
-      if (res.ok) {
-        const json = await res.json();
-        const rows = json.rows || [];
-        for (const r of rows) {
-          const query = (r.keys?.[0] || "").toLowerCase().trim();
-          if (query) {
-            gscQueriesMap.set(query, {
-              position: Math.round(r.position),
-              clicks: r.clicks || 0,
-              impressions: r.impressions || 0,
-              ctr: r.ctr || 0,
-            });
+      for (const targetSite of candidates) {
+        const res = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(targetSite)}/searchAnalytics/query`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            startDate: start,
+            endDate: end,
+            dimensions: ["query"],
+            rowLimit: 100,
+          }),
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          const rows = json.rows || [];
+          for (const r of rows) {
+            const query = (r.keys?.[0] || "").toLowerCase().trim();
+            if (query) {
+              gscQueriesMap.set(query, {
+                position: Math.round(r.position),
+                clicks: r.clicks || 0,
+                impressions: r.impressions || 0,
+                ctr: r.ctr || 0,
+              });
+            }
           }
+          break;
         }
       }
     } catch (apiErr) {
