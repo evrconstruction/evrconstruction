@@ -21,15 +21,19 @@ function getAdminApp(): App {
     return existingApps[0]!;
   }
 
-  const adminKey = process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_KEY || process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  // Use App Hosting compute service account (firebase-app-hosting-compute) via ADC by default.
+  // This account already possesses Cloud Datastore User & Firebase Admin SDK roles.
   let credential = applicationDefault();
 
+  const adminKey = process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_KEY;
   if (adminKey) {
     try {
       const parsed = JSON.parse(adminKey);
-      credential = cert(parsed);
+      if (parsed.client_email && !parsed.client_email.includes("evr-seo-analytics")) {
+        credential = cert(parsed);
+      }
     } catch (e) {
-      console.warn("Failed to parse Firebase admin service account key, using ADC:", e);
+      console.warn("Failed to parse FIREBASE_ADMIN_SERVICE_ACCOUNT_KEY, using compute ADC:", e);
     }
   }
 
