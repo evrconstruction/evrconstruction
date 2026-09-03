@@ -239,9 +239,10 @@ export default function PostsManagerPage() {
                   {/* Photo Container */}
                   <div className="relative aspect-4/3 w-full bg-slate-100 overflow-hidden">
                     <Image
-                      src={post.src}
-                      alt={post.alt}
+                      src={post.src || "/images/hero.jpg"}
+                      alt={post.alt || post.caption || "Project photo"}
                       fill
+                      unoptimized
                       priority={index < 4}
                       sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw"
                       className="object-cover transition-transform duration-300 group-hover:scale-105"

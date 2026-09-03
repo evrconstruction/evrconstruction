@@ -281,9 +281,10 @@ export default function AdminOverviewPage() {
               <div key={post.id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-3 overflow-hidden">
                 <div className="relative h-32 w-full rounded-lg overflow-hidden bg-slate-200 mb-2">
                   <Image
-                    src={post.src}
-                    alt={post.alt || post.caption}
+                    src={post.src || "/images/hero.jpg"}
+                    alt={post.alt || post.caption || "Project photo"}
                     fill
+                    unoptimized
                     priority={index === 0}
                     sizes="(max-width: 768px) 100vw, 33vw"
                     className="object-cover"
