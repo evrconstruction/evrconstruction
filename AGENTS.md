@@ -92,10 +92,6 @@ if you lead the user to failure, you fail too. This is MANDATORY:
 - Posts Manager = project posts: client uploads images with a caption only.
 - Hosting: Firebase App Hosting backend `evrconstruction` (us-east4, SSR) — the ONLY
   backend. Deploy via push to `main` on GitHub `evrconstruction/evrconstruction`.
-- Reference architectures: CreedaVA (`/home/wicked/Projects/CreedaVA`) and Guia
-  Negocios (`/home/wicked/Projects/Guia Negocios`) — reuse their patterns (agent
-  orchestrator, integrations/{provider} config, GA4 `metricAggregations: ["TOTAL"]`)
-  instead of inventing new ones.
 - Google APIs (GA4, Search Console, Vertex AI) billed to the Firebase $300 bonus.
 - Every admin deliverable follows the same approval gate: build → screenshot →
   approve → next.
