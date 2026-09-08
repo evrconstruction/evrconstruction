@@ -1,9 +1,9 @@
 export const SITE = {
   name: "EVR Construction LLC",
   phone: {
-    english: "(865) 367-9501",
+    english: "(865) 221-7275",
     spanish: "(865) 275-6672",
-    englishHref: "tel:+18653679501",
+    englishHref: "tel:+18652217275",
     spanishHref: "tel:+18652756672",
   },
   serviceAreas: [

@@ -5,7 +5,7 @@ import { ContactForm } from "@/components/site/ContactForm";
 export const metadata: Metadata = {
   title: "Contact",
   description:
-    "Contact EVR Construction LLC for a free estimate. Call (865) 367-9501 (English) or (865) 275-6672 (Español), or send us a message.",
+    "Contact EVR Construction LLC for a free estimate. Call (865) 221-7275 (English) or (865) 275-6672 (Español), or send us a message.",
 };
 
 export default function ContactPage() {
