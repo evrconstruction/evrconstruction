@@ -5,6 +5,7 @@ on:
     # Runs at 08:00 UTC (4:00 AM Eastern Time) every day
     - cron: '0 8 * * *'
   workflow_dispatch: # Allows manual one-click testing from GitHub Actions tab
+permissions: {}
 
 jobs:
   run-seo-agent:
