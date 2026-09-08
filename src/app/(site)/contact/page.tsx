@@ -6,11 +6,43 @@ export const metadata: Metadata = {
   title: "Contact",
   description:
     "Contact EVR Construction LLC for a free estimate. Call (865) 221-7275 (English) or (865) 275-6672 (Español), or send us a message.",
+  alternates: {
+    canonical: "https://evrconstructions.com/contact",
+  },
+  openGraph: {
+    title: "Contact EVR Construction LLC | Knoxville, TN",
+    description:
+      "Contact EVR Construction LLC for a free estimate. Call (865) 221-7275 (English) or (865) 275-6672 (Español), or send us a message.",
+    url: "https://evrconstructions.com/contact",
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: "Home",
+      item: "https://evrconstructions.com",
+    },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: "Contact",
+      item: "https://evrconstructions.com/contact",
+    },
+  ],
 };
 
 export default function ContactPage() {
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       {/* Page hero */}
       <section className="bg-charcoal-deep py-16 text-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

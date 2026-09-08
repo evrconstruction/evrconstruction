@@ -8,11 +8,44 @@ export const metadata: Metadata = {
   title: "Projects",
   description:
     "Explore recent decks, gazebos, and carpentry projects by EVR Construction across Knoxville and East Tennessee.",
+  alternates: {
+    canonical: "https://evrconstructions.com/projects",
+  },
+  openGraph: {
+    title: "Construction Projects | EVR Construction LLC",
+    description:
+      "Explore recent decks, gazebos, and carpentry projects by EVR Construction across Knoxville and East Tennessee.",
+    url: "https://evrconstructions.com/projects",
+    images: [{ url: "/images/projects-hero.avif", width: 1600, height: 1067, alt: "EVR Construction projects" }],
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: "Home",
+      item: "https://evrconstructions.com",
+    },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: "Projects",
+      item: "https://evrconstructions.com/projects",
+    },
+  ],
 };
 
 export default function ProjectsPage() {
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       {/* Hero */}
       <section className="relative isolate overflow-hidden bg-charcoal-deep text-white">
         <div className="absolute inset-0 -z-10">
@@ -78,14 +111,16 @@ export default function ProjectsPage() {
               />
               <div className="p-6">
                 <h2 className="mt-1.5 font-heading text-lg font-bold text-charcoal group-hover:text-amber-dark">
-                  {service.title}
+                  <Link href={`/projects/${service.slug}`}>
+                    {service.title}
+                  </Link>
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-muted">{service.summary}</p>
                 <Link
                   href={`/projects/${service.slug}`}
                   className="mt-5 inline-flex font-heading text-xs font-semibold uppercase tracking-wide text-charcoal underline decoration-amber-brand decoration-2 underline-offset-4 hover:text-amber-dark"
                 >
-                  View Similar Projects →
+                  View {service.title} Projects →
                 </Link>
               </div>
             </article>

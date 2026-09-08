@@ -2,6 +2,7 @@ import Link from "next/link";
 
 type Service = {
   title: string;
+  slug: string;
   description: string;
   icon: "deck" | "gazebo" | "restore" | "remodel" | "carpentry" | "patio";
 };
@@ -9,36 +10,42 @@ type Service = {
 const SERVICES: Service[] = [
   {
     title: "Decks",
+    slug: "decks",
     description:
       "Custom wood and composite decks, built to code and made for East Tennessee summers.",
     icon: "deck",
   },
   {
     title: "Gazebos",
+    slug: "gazebo",
     description:
       "Freestanding gazebos that turn an open yard into a shaded gathering place.",
     icon: "gazebo",
   },
   {
     title: "Deck & Gazebo Restoration",
+    slug: "restoration",
     description:
       "Sanding, sealing, and board replacement that bring older structures back to life.",
     icon: "restore",
   },
   {
     title: "Remodeling",
+    slug: "remodeling",
     description:
       "Interior and exterior updates, from new trim to a full outdoor-living refresh.",
     icon: "remodel",
   },
   {
     title: "Carpentry",
+    slug: "carpentry",
     description:
       "Framing, built-ins, and one-off woodwork. If it can be drawn, we can build it.",
     icon: "carpentry",
   },
   {
     title: "Patios & Pergolas",
+    slug: "patios-pergolas",
     description:
       "Patio covers and pergolas that add shade, structure, and value to your home.",
     icon: "patio",
@@ -77,15 +84,23 @@ export function ServicesSection() {
     <section className="bg-white py-20">
       <div className="mx-auto grid max-w-7xl gap-x-12 gap-y-14 px-4 text-center sm:px-6 md:grid-cols-2 md:text-left lg:grid-cols-3 lg:px-8">
         {SERVICES.map((service) => (
-          <article key={service.title} className="mx-auto flex w-full max-w-sm flex-col items-center gap-4 md:mx-0 md:max-w-none md:items-start">
+          <article key={service.title} className="group mx-auto flex w-full max-w-sm flex-col items-center gap-4 md:mx-0 md:max-w-none md:items-start">
             <ServiceIcon icon={service.icon} />
             <div>
-              <h3 className="font-heading text-base font-semibold text-charcoal">
-                {service.title}
+              <h3 className="font-heading text-base font-semibold text-charcoal transition-colors group-hover:text-amber-dark">
+                <Link href={`/projects/${service.slug}`} className="hover:underline">
+                  {service.title}
+                </Link>
               </h3>
               <p className="mt-1.5 max-w-xs text-sm leading-6 text-muted md:max-w-none">
                 {service.description}
               </p>
+              <Link
+                href={`/projects/${service.slug}`}
+                className="mt-3 inline-flex font-heading text-xs font-semibold uppercase tracking-wide text-charcoal underline decoration-amber-brand decoration-2 underline-offset-4 hover:text-amber-dark"
+              >
+                View {service.title} Projects →
+              </Link>
             </div>
           </article>
         ))}

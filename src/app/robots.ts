@@ -10,5 +10,6 @@ export default function robots(): MetadataRoute.Robots {
       disallow: ["/admin/", "/api/"],
     },
     sitemap: "https://evrconstructions.com/sitemap.xml",
+    host: "https://evrconstructions.com",
   };
 }

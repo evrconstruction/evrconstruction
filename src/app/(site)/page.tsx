@@ -1,8 +1,25 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { SITE } from "@/lib/site";
 import { ServicesSection } from "@/components/site/ServicesSection";
 import { NoJobTooBigSection } from "@/components/site/NoJobTooBigSection";
+
+export const metadata: Metadata = {
+  title: "EVR Construction LLC | Decks, Gazebos & Carpentry in Knoxville, TN",
+  description:
+    "Licensed & insured deck, gazebo, railing and carpentry contractor serving Knoxville, Farragut, Hardin Valley and East Tennessee. Free estimates.",
+  alternates: {
+    canonical: "https://evrconstructions.com",
+  },
+  openGraph: {
+    title: "EVR Construction LLC | Decks, Gazebos & Carpentry in Knoxville, TN",
+    description:
+      "Licensed & insured deck, gazebo, railing and carpentry contractor serving Knoxville, Farragut, Hardin Valley and East Tennessee. Free estimates.",
+    url: "https://evrconstructions.com",
+    images: [{ url: "/images/hero.jpg", width: 1600, height: 1200, alt: "EVR Construction deck project" }],
+  },
+};
 
 const REVIEWS = [
   {

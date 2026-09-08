@@ -48,9 +48,16 @@ const localBusinessJsonLd = {
   ],
   address: {
     "@type": "PostalAddress",
+    streetAddress: "3417 Mynatt Rd",
+    addressLocality: "Knoxville",
     addressRegion: "TN",
+    postalCode: "37918",
     addressCountry: "US",
   },
+  sameAs: [
+    "https://maps.google.com/?q=EVR+Construction+LLC+Knoxville+TN",
+    "https://nextdoor.com/pages/evr-construction-knoxville-tn/",
+  ],
   geo: {
     "@type": "GeoCoordinates",
     latitude: 35.9606,
@@ -69,13 +76,45 @@ const localBusinessJsonLd = {
 const siteNavigationJsonLd = {
   "@context": "https://schema.org",
   "@type": "ItemList",
-  itemListElement: SERVICES.map((service, index) => ({
-    "@type": "SiteNavigationElement",
-    position: index + 1,
-    name: service.title,
-    description: service.summary,
-    url: `https://evrconstructions.com/projects/${service.slug}`,
-  })),
+  "@id": "https://evrconstructions.com/#navigation",
+  name: "EVR Construction Main Navigation & Services",
+  itemListElement: [
+    {
+      "@type": "SiteNavigationElement",
+      position: 1,
+      name: "Home",
+      description: "EVR Construction LLC — Decks, Gazebos & Carpentry Contractor in Knoxville, TN",
+      url: "https://evrconstructions.com",
+    },
+    {
+      "@type": "SiteNavigationElement",
+      position: 2,
+      name: "About",
+      description: "Learn about EVR Construction LLC, our craftsmanship, and our team in East Tennessee.",
+      url: "https://evrconstructions.com/about",
+    },
+    {
+      "@type": "SiteNavigationElement",
+      position: 3,
+      name: "Projects",
+      description: "Explore our portfolio of decks, gazebos, restoration, remodeling, and carpentry builds.",
+      url: "https://evrconstructions.com/projects",
+    },
+    {
+      "@type": "SiteNavigationElement",
+      position: 4,
+      name: "Contact",
+      description: "Book a free consultation and estimate with EVR Construction LLC.",
+      url: "https://evrconstructions.com/contact",
+    },
+    ...SERVICES.map((service, index) => ({
+      "@type": "SiteNavigationElement",
+      position: 5 + index,
+      name: service.title,
+      description: service.summary,
+      url: `https://evrconstructions.com/projects/${service.slug}`,
+    })),
+  ],
 };
 
 export default function SiteLayout({ children }: { children: ReactNode }) {

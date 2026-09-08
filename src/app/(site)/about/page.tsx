@@ -6,6 +6,34 @@ export const metadata: Metadata = {
   title: "About",
   description:
     "EVR Construction LLC is a licensed and insured contractor in Knoxville, TN specializing in decks, gazebos, railings, and all types of carpentry.",
+  alternates: {
+    canonical: "https://evrconstructions.com/about",
+  },
+  openGraph: {
+    title: "About EVR Construction LLC | Knoxville, TN",
+    description:
+      "EVR Construction LLC is a licensed and insured contractor in Knoxville, TN specializing in decks, gazebos, railings, and all types of carpentry.",
+    url: "https://evrconstructions.com/about",
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: "Home",
+      item: "https://evrconstructions.com",
+    },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: "About",
+      item: "https://evrconstructions.com/about",
+    },
+  ],
 };
 
 const VALUES = [
@@ -54,6 +82,10 @@ const STATS = [
 export default function AboutPage() {
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       {/* Hero */}
       <section className="relative isolate overflow-hidden bg-charcoal-deep text-white">
         <div className="absolute inset-0 -z-10">

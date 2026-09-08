@@ -27,6 +27,20 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  alternates: {
+    canonical: "./",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   title: {
     default:
       "EVR Construction LLC | Decks, Gazebos & Carpentry in Knoxville, TN",
@@ -46,12 +60,30 @@ export const metadata: Metadata = {
   },
 };
 
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": `${SITE_URL}/#website`,
+  name: "EVR Construction LLC",
+  url: SITE_URL,
+  inLanguage: "en-US",
+  publisher: {
+    "@id": `${SITE_URL}/#business`,
+  },
+};
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
       className={`${rubik.variable} ${openSans.variable} h-full antialiased`}
     >
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+      </head>
       <body className="min-h-full flex flex-col bg-white font-body text-charcoal">
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-19DRNQBM8T"

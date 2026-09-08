@@ -57,8 +57,58 @@ export default async function ServiceProjectsPage({ params }: ServicePageProps) 
     notFound();
   }
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://evrconstructions.com",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Projects",
+        item: "https://evrconstructions.com/projects",
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: service.title,
+        item: `https://evrconstructions.com/projects/${service.slug}`,
+      },
+    ],
+  };
+
+  const serviceJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "@id": `https://evrconstructions.com/projects/${service.slug}#service`,
+    name: `${service.title} Construction`,
+    serviceType: service.title,
+    description: service.summary,
+    provider: {
+      "@id": "https://evrconstructions.com/#business",
+    },
+    areaServed: {
+      "@type": "AdministrativeArea",
+      name: "East Tennessee, TN",
+    },
+    url: `https://evrconstructions.com/projects/${service.slug}`,
+  };
+
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }}
+      />
       <section className="relative isolate overflow-hidden bg-charcoal-deep text-white">
         <div className="absolute inset-0 -z-10">
           <Image
