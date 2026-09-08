@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { generatePostGeoEnhancements } from "@/lib/seo-agent/skills/saturday-post-enhancer";
 import { verifyAdminSession } from "@/lib/auth-guard";
+import { getGoogleAccessToken } from "@/lib/integrations/google-auth";
 
 export async function POST(req: Request) {
   try {
@@ -20,8 +21,6 @@ export async function POST(req: Request) {
       );
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-
     // Clean base64 string
     const base64Data = imageBase64.includes("base64,")
       ? imageBase64.split("base64,")[1]
@@ -31,9 +30,7 @@ export async function POST(req: Request) {
       ? imageBase64.substring(imageBase64.indexOf(":") + 1, imageBase64.indexOf(";"))
       : "image/jpeg";
 
-    if (apiKey) {
-      try {
-        const prompt = `You are the lead SEO & GEO copywriter for EVR Construction LLC (a licensed general contractor in Knoxville, East Tennessee serving Farragut, Maryville, Hardin Valley, Oak Ridge, Sevierville, Powell).
+    const prompt = `You are the lead SEO & GEO copywriter for EVR Construction LLC (a licensed general contractor in Knoxville, East Tennessee serving Farragut, Maryville, Hardin Valley, Oak Ridge, Sevierville, Powell).
 
 Analyze this construction project photo:
 1. Identify the specific construction work visible (e.g. composite decking, cedar gazebo, framing, screened porch, patio, railing).
@@ -48,6 +45,67 @@ Output valid JSON ONLY in this format:
   "altText": "SEO alt text describing photo"
 }`;
 
+    // 1. Primary: Google Cloud Vertex AI (billed to Google Cloud $300 credit via Service Account)
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "evrconstruction-5f7bd";
+    const googleToken = await getGoogleAccessToken(["https://www.googleapis.com/auth/cloud-platform"]);
+
+    if (googleToken) {
+      try {
+        const vertexUrl = `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/global/publishers/google/models/gemini-2.5-flash:generateContent`;
+        const vertexRes = await fetch(vertexUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${googleToken}`,
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  { text: prompt },
+                  {
+                    inlineData: {
+                      mimeType: mimeType,
+                      data: base64Data,
+                    },
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0.4,
+            },
+          }),
+        });
+
+        if (vertexRes.ok) {
+          const vertexData = await vertexRes.json();
+          const text = vertexData.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) {
+            const parsed = JSON.parse(text);
+            return NextResponse.json({
+              success: true,
+              source: "vertex-ai-vision",
+              caption: parsed.caption,
+              category: parsed.category,
+              altText: parsed.altText,
+            });
+          }
+        } else {
+          const errText = await vertexRes.text();
+          console.warn("Vertex AI request failed:", vertexRes.status, errText);
+        }
+      } catch (vertexErr) {
+        console.warn("Vertex AI call fallback to next option:", vertexErr);
+      }
+    }
+
+    // 2. Secondary: Fallback to GEMINI_API_KEY if configured in environment
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (apiKey) {
+      try {
         const geminiRes = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
           {
@@ -90,7 +148,7 @@ Output valid JSON ONLY in this format:
           }
         }
       } catch (geminiErr) {
-        console.warn("Gemini vision call fallback to heuristic enhancer:", geminiErr);
+        console.warn("Gemini vision fallback to heuristic enhancer:", geminiErr);
       }
     }
 
