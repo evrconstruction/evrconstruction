@@ -56,6 +56,7 @@ const localBusinessJsonLd = {
   },
   sameAs: [
     "https://share.google/1cKZL2WUAFrtcCKV6",
+    "https://www.yelp.com/biz/evr-construction-knoxville",
     "https://maps.google.com/?q=EVR+Construction+LLC+Knoxville+TN",
     "https://nextdoor.com/pages/evr-construction-knoxville-tn/",
   ],

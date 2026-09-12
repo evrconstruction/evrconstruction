@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     description:
       "Licensed & insured deck, gazebo, railing and carpentry contractor serving Knoxville, Farragut, Hardin Valley and East Tennessee. Free estimates.",
     url: "https://evrconstructions.com",
-    images: [{ url: "/images/hero.jpg", width: 1600, height: 1200, alt: "EVR Construction deck project" }],
+    images: [{ url: "/images/hero.jpg", width: 1200, height: 1600, alt: "EVR Construction deck project" }],
   },
 };
 
@@ -113,7 +113,7 @@ export default function HomePage() {
         {/* Full-bleed image: absolute right half, top-to-bottom of the section (desktop) */}
         <div className="relative h-[420px] sm:h-[520px] lg:absolute lg:inset-y-0 lg:right-0 lg:h-auto lg:w-1/2">
           <Image
-            src="/images/hero.jpg"
+            src="/images/hero.avif"
             alt="Custom wooden deck built by EVR Construction"
             fill
             priority
