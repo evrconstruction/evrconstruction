@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 
 const localBusinessJsonLd = {
   "@context": "https://schema.org",
-  "@type": "HomeAndConstructionBusiness",
+  "@type": ["HomeAndConstructionBusiness", "DeckContractor"],
   "@id": "https://evrconstructions.com/#business",
   name: SITE.name,
   url: "https://evrconstructions.com",
@@ -55,6 +55,7 @@ const localBusinessJsonLd = {
     addressCountry: "US",
   },
   sameAs: [
+    "https://share.google/1cKZL2WUAFrtcCKV6",
     "https://maps.google.com/?q=EVR+Construction+LLC+Knoxville+TN",
     "https://nextdoor.com/pages/evr-construction-knoxville-tn/",
   ],

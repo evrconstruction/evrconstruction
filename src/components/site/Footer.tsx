@@ -96,6 +96,17 @@ export function Footer() {
                 contact@evrconstructions.com
               </a>
             </li>
+            <li className="flex items-center gap-2.5">
+              <StarIcon />
+              <a
+                href="https://share.google/1cKZL2WUAFrtcCKV6"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition-colors hover:text-amber-brand"
+              >
+                Leave us a Google review
+              </a>
+            </li>
           </ul>
         </div>
       </div>
@@ -133,4 +144,7 @@ const PhoneIcon = () => (
 );
 const MailIcon = () => (
   <Icon path="M3 5h18v14H3V5zm0 1l9 7 9-7" />
+);
+const StarIcon = () => (
+  <Icon path="M12 3l2.7 5.8 6.3.8-4.6 4.3 1.2 6.1L12 17l-5.6 3 1.2-6.1L3 9.6l6.3-.8L12 3z" />
 );
