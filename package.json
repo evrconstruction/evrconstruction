@@ -12,8 +12,8 @@
     "axios": "^1.20.0",
     "firebase": "^12.19.0",
     "firebase-admin": "^14.4.0",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "ssrf-req-filter": "^1.1.1"
   },
   "devDependencies": {
