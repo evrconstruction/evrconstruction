@@ -40,6 +40,7 @@ export function Footer() {
             <li>
               <Link
                 href="/admin/login"
+                rel="nofollow"
                 className="text-sm text-white/70 transition-colors hover:text-amber-brand"
               >
                 Admin
