@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 
-const FORMSUBMIT_EMAIL = "contact@evrconstructions.com";
-
 type FormStatus = "idle" | "submitting" | "success" | "error";
 
 const initialForm = {
@@ -31,48 +29,23 @@ export function ContactForm() {
     setStatus("submitting");
 
     try {
-      const response = await fetch(
-        `https://formsubmit.co/ajax/${FORMSUBMIT_EMAIL}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({
-            name: `${form.firstName} ${form.lastName}`.trim(),
-            firstName: form.firstName,
-            lastName: form.lastName,
-            city: form.city,
-            phone: form.phone || "Not provided",
-            email: form.email,
-            message: form.message,
-            _subject: "New EVR Construction Website Inquiry",
-            _template: "table",
-            _captcha: "false",
-            _replyto: form.email,
-          }),
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          firstName: form.firstName,
+          lastName: form.lastName,
+          city: form.city,
+          phone: form.phone || "Not provided",
+          email: form.email,
+          message: form.message,
+        }),
+      });
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.ok) {
         setStatus("success");
-        // Log lead event to Firestore activity logs
-        fetch("/api/admin/analytics/activity", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            event: "form_submit",
-            label: "Consultation Request Submitted",
-            detail: `${form.firstName} ${form.lastName} in ${form.city} — ${form.message.substring(0, 50)}...`,
-            location: `${form.city || "East Tennessee"}, TN`,
-            device: typeof window !== "undefined" && window.innerWidth < 768 ? "Mobile" : "Desktop",
-            page: "/contact",
-          }),
-        }).catch(() => {});
-
         setForm(initialForm);
       } else {
         setStatus("error");

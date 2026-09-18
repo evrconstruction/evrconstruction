@@ -49,6 +49,16 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // Customer Leads collection - admin read, write
+    match /leads/{leadId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Admin Notifications collection - admin read, write
+    match /admin_notifications/{notifId} {
+      allow read, write: if isAdmin();
+    }
+
     // Default deny all other paths
     match /{document=**} {
       allow read, write: if false;

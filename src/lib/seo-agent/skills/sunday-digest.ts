@@ -1,24 +1,57 @@
 import { AgentDirective, AgentRunLog } from "../types";
 import { SkillResult } from "./monday-keywords";
+import { adminDb } from "@/lib/firebase-admin";
 
 export async function runSundayDigestSkill(): Promise<SkillResult> {
   const start = Date.now();
+  const directives: AgentDirective[] = [];
+  const findings: string[] = [];
 
-  const directives: AgentDirective[] = [
-    {
-      id: `dir-sun-1`,
+  let activeBacklinks = 0;
+  let totalTrackedKeywords = 0;
+  let openDirectivesCount = 0;
+  let recentRunsCount = 0;
+  let successfulRunsCount = 0;
+
+  try {
+    const [backlinkSnap, keywordSnap, runSnap, directiveSnap] = await Promise.all([
+      adminDb.collection("backlinks").where("status", "==", "Active").get(),
+      adminDb.collection("tracked_keywords").get(),
+      adminDb.collection("seo_agent_runs").orderBy("timestamp", "desc").limit(30).get(),
+      adminDb.collection("seo_agent_directives").where("status", "==", "Open").get(),
+    ]);
+
+    activeBacklinks = backlinkSnap.size;
+    totalTrackedKeywords = keywordSnap.size;
+    openDirectivesCount = directiveSnap.size;
+    recentRunsCount = runSnap.size;
+    successfulRunsCount = runSnap.docs.filter((d) => d.data().status === "Success").length;
+  } catch (err) {
+    console.warn("Failed to query live Firestore metrics in Sunday digest:", err);
+  }
+
+  const healthScore = recentRunsCount > 0 ? Math.round((successfulRunsCount / recentRunsCount) * 100) : 100;
+
+  findings.push(`Weekly Operational Health: ${healthScore}% pass rate across ${recentRunsCount} automated skill executions.`);
+  findings.push(`Directory Citations: ${activeBacklinks} verified active contractor listings.`);
+  findings.push(`Monitored Keywords: ${totalTrackedKeywords} search terms actively tracked.`);
+  findings.push(`Open Action Items: ${openDirectivesCount} pending directives.`);
+
+  if (openDirectivesCount > 0) {
+    directives.push({
+      id: `dir-sun-${Date.now()}`,
       skillId: "skill-sunday",
-      title: "Weekly SEO Action Plan: Focus on Page 2 Keywords",
-      description: "Overall SEO/GEO health is at 94%. Primary growth opportunity for the coming week is converting 2 Page-2 keywords (outdoor living contractor knoxville #14, cedar gazebo builder maryville #11) into Top-5 rankings via tagged project posts.",
-      impact: "Estimated +550 monthly search impressions",
+      title: `Resolve ${openDirectivesCount} Open SEO Directives`,
+      description: `There are currently ${openDirectivesCount} open action items across keywords, citations, and technical audits. Addressing high-priority items will improve East Tennessee search visibility.`,
+      impact: "Improves overall local search and citation rankings",
       priority: "High",
       category: "Digest",
-      actionLabel: "View Directives",
+      actionLabel: "View All Directives",
       actionHref: "/admin/seo-agent",
       status: "Open",
       createdAt: new Date().toISOString(),
-    },
-  ];
+    });
+  }
 
   const runLog: AgentRunLog = {
     id: `run-${Date.now()}-sun`,
@@ -26,13 +59,9 @@ export async function runSundayDigestSkill(): Promise<SkillResult> {
     skillId: "skill-sunday",
     skillName: "Weekly Digest & Action Synthesizer",
     status: "Success",
-    durationMs: Date.now() - start + 110,
-    summary: "Generated weekly executive health digest. Global SEO/GEO health score: 94%. 4 active backlinks verified, 51 keywords tracked.",
-    findings: [
-      "Zero technical crawl errors detected across all public routes.",
-      "100% NAP consistency maintained across 4 regional contractor directories.",
-      "Top priority: Tag 2 new job posts with Knoxville & Maryville geo-targets.",
-    ],
+    durationMs: Date.now() - start,
+    summary: `Compiled weekly executive briefing from live telemetry. System health: ${healthScore}%. ${activeBacklinks} active citations, ${totalTrackedKeywords} tracked terms, ${openDirectivesCount} open directives.`,
+    findings,
   };
 
   return { runLog, directives };

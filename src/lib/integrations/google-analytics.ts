@@ -317,8 +317,8 @@ export async function fetchGA4Analytics(days = 30): Promise<GA4ReportResult> {
           metrics: {
             visitors: visitors.toLocaleString(),
             newUsers: newUsersCount.toLocaleString(),
-            engagementRate: engRateVal > 0 ? `${engRateVal.toFixed(1)}%` : "100.0%",
-            avgSessionDuration: avgDurationSecs > 0 ? `${Math.floor(avgDurationSecs / 60)}m ${avgDurationSecs % 60}s` : "1m 15s",
+            engagementRate: engRateVal > 0 ? `${engRateVal.toFixed(1)}%` : "0.0%",
+            avgSessionDuration: avgDurationSecs > 0 ? `${Math.floor(avgDurationSecs / 60)}m ${avgDurationSecs % 60}s` : "0m 0s",
             conversions: conversions.toString(),
           },
           timeSeries,

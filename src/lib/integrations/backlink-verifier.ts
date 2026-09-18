@@ -115,32 +115,21 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
       };
     }
 
-    if (res.status === 403) {
-      // Known high-authority anti-bot directory listings (BBB, Yelp, Nextdoor, Houzz, Thumbtack, Bizapedia)
+    if (res.status === 403 && isKnownDirectory) {
+      // Known high-authority anti-bot directory listings returning 403 Forbidden (BBB, Yelp, Houzz)
       return {
-        status: isKnownDirectory ? "Active" : "Unreachable",
+        status: "Active",
         type: isNoFollowDirectory(isYelp, isBbb, isHouzz) ? "NoFollow" : "DoFollow",
-        httpStatus: 200,
+        httpStatus: res.status,
         lastVerified: today,
       };
     }
 
-    return {
-      status: isKnownDirectory ? "Active" : "Unreachable",
-      type: "NoFollow",
-      httpStatus: res.status,
-      lastVerified: today,
-    };
-  } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : "Unknown error";
-    // Avoid passing user-controlled format strings to console functions (CodeQL High)
-    console.warn("Backlink verification warning. URL:", sourceUrl, "Error:", errorMsg);
-
-    if (isKnownDirectory) {
+    if (res.status === 404 || res.status === 410) {
       return {
-        status: "Active",
-        type: isNoFollowDirectory(isYelp, isBbb, isHouzz) ? "NoFollow" : "DoFollow",
-        httpStatus: 200,
+        status: "Missing",
+        type: "NoFollow",
+        httpStatus: res.status,
         lastVerified: today,
       };
     }
@@ -148,7 +137,17 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
     return {
       status: "Unreachable",
       type: "NoFollow",
-      httpStatus: 200,
+      httpStatus: res.status,
+      lastVerified: today,
+    };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "Unknown error";
+    console.warn("Backlink verification warning. URL:", sourceUrl, "Error:", errorMsg);
+
+    return {
+      status: "Unreachable",
+      type: "NoFollow",
+      httpStatus: 500,
       lastVerified: today,
     };
   }

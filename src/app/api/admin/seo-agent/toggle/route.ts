@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid payload. 'active' must be a boolean." }, { status: 400 });
     }
 
-    const updatedConfig = toggleAutonomousAgent(active);
+    const updatedConfig = await toggleAutonomousAgent(active);
     return NextResponse.json({ success: true, config: updatedConfig });
   } catch (error) {
     console.error("Error toggling autonomous agent:", error);

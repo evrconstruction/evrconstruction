@@ -16,8 +16,8 @@ export async function GET() {
   }
 
   try {
-    const notifications = getNotifications();
-    const unreadCount = getUnreadCount();
+    const notifications = await getNotifications();
+    const unreadCount = await getUnreadCount();
     return NextResponse.json({ notifications, unreadCount });
   } catch (error) {
     console.error("Error fetching notifications:", error);
@@ -37,17 +37,18 @@ export async function POST(req: Request) {
     const { action, id, notification } = body;
 
     if (action === "mark-all-read") {
-      markAllAsRead();
+      await markAllAsRead();
       return NextResponse.json({ success: true, unreadCount: 0 });
     }
 
     if (action === "mark-read" && id) {
-      const success = markAsRead(id);
-      return NextResponse.json({ success, unreadCount: getUnreadCount() });
+      const success = await markAsRead(id);
+      const unreadCount = await getUnreadCount();
+      return NextResponse.json({ success, unreadCount });
     }
 
     if (action === "create" && notification) {
-      const created = addNotification(notification);
+      const created = await addNotification(notification);
       return NextResponse.json({ success: true, notification: created });
     }
 

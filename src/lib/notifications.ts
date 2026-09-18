@@ -1,3 +1,5 @@
+import { adminDb } from "@/lib/firebase-admin";
+
 export type NotificationType = "alert" | "warning" | "success" | "info";
 export type NotificationCategory = "seo_agent" | "keywords" | "backlinks" | "lead" | "system";
 
@@ -14,40 +16,91 @@ export interface AdminNotification {
   emailDispatched: boolean;
 }
 
+const NOTIFICATIONS_COLLECTION = "admin_notifications";
 const ADMIN_EMAIL = "contact@evrconstructions.com";
 
-const notificationsStore: AdminNotification[] = [];
+export async function getNotifications(): Promise<AdminNotification[]> {
+  try {
+    const snap = await adminDb
+      .collection(NOTIFICATIONS_COLLECTION)
+      .orderBy("createdAt", "desc")
+      .limit(50)
+      .get();
 
-export function getNotifications(): AdminNotification[] {
-  return [...notificationsStore];
-}
-
-export function getUnreadCount(): number {
-  return notificationsStore.filter((n) => !n.read).length;
-}
-
-export function markAsRead(id: string): boolean {
-  const notif = notificationsStore.find((n) => n.id === id);
-  if (notif) {
-    notif.read = true;
-    return true;
+    return snap.docs.map((doc) => ({
+      id: doc.id,
+      ...(doc.data() as Omit<AdminNotification, "id">),
+    }));
+  } catch (err) {
+    console.error("Failed to fetch notifications from Firestore:", err);
+    return [];
   }
-  return false;
 }
 
-export function markAllAsRead(): void {
-  notificationsStore.forEach((n) => (n.read = true));
+export async function getUnreadCount(): Promise<number> {
+  try {
+    const snap = await adminDb
+      .collection(NOTIFICATIONS_COLLECTION)
+      .where("read", "==", false)
+      .get();
+    return snap.size;
+  } catch (err) {
+    console.error("Failed to get unread count from Firestore:", err);
+    return 0;
+  }
 }
 
-export function addNotification(
+export async function markAsRead(id: string): Promise<boolean> {
+  try {
+    await adminDb.collection(NOTIFICATIONS_COLLECTION).doc(id).update({ read: true });
+    return true;
+  } catch (err) {
+    console.error(`Failed to mark notification ${id} as read:`, err);
+    return false;
+  }
+}
+
+export async function markAllAsRead(): Promise<void> {
+  try {
+    const snap = await adminDb
+      .collection(NOTIFICATIONS_COLLECTION)
+      .where("read", "==", false)
+      .get();
+
+    const batch = adminDb.batch();
+    snap.docs.forEach((doc) => {
+      batch.update(doc.ref, { read: true });
+    });
+    await batch.commit();
+  } catch (err) {
+    console.error("Failed to mark all notifications as read:", err);
+  }
+}
+
+export async function addNotification(
   data: Omit<AdminNotification, "id" | "createdAt" | "read" | "emailDispatched"> & {
     triggerEmail?: boolean;
   }
-): AdminNotification {
+): Promise<AdminNotification> {
   const shouldEmail = data.triggerEmail ?? (data.priority === "high");
+  const isoDate = new Date().toISOString();
 
-  const newNotif: AdminNotification = {
-    id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+  let emailSent = false;
+  if (shouldEmail) {
+    emailSent = await dispatchAdminAlertEmail({
+      title: data.title,
+      message: data.message,
+      type: data.type,
+      priority: data.priority,
+      category: data.category,
+      actionHref: data.actionHref,
+      read: false,
+      createdAt: isoDate,
+      emailDispatched: false,
+    });
+  }
+
+  const newNotifData: Omit<AdminNotification, "id"> = {
     title: data.title,
     message: data.message,
     type: data.type,
@@ -55,26 +108,37 @@ export function addNotification(
     category: data.category,
     actionHref: data.actionHref,
     read: false,
-    createdAt: new Date().toISOString(),
-    emailDispatched: shouldEmail,
+    createdAt: isoDate,
+    emailDispatched: emailSent,
   };
 
-  notificationsStore.unshift(newNotif);
-
-  if (shouldEmail) {
-    dispatchAdminAlertEmail(newNotif);
+  try {
+    const ref = await adminDb.collection(NOTIFICATIONS_COLLECTION).add(newNotifData);
+    return {
+      id: ref.id,
+      ...newNotifData,
+    };
+  } catch (err) {
+    console.error("Failed to save notification to Firestore:", err);
+    return {
+      id: `local-${Date.now()}`,
+      ...newNotifData,
+    };
   }
-
-  return newNotif;
 }
 
-export async function dispatchAdminAlertEmail(notification: AdminNotification): Promise<boolean> {
+export async function dispatchAdminAlertEmail(notification: Omit<AdminNotification, "id">): Promise<boolean> {
   try {
-    console.log(`[EMAIL DISPATCH] Triggering alert email to ${ADMIN_EMAIL} for: "${notification.title}"`);
-    // Logs and dispatches through mail queue / API endpoint
+    await adminDb.collection("mail").add({
+      to: ADMIN_EMAIL,
+      message: {
+        subject: `[EVR Alert] ${notification.title}`,
+        text: `${notification.message}\n\nView details: https://evrconstructions.com${notification.actionHref}\nTimestamp: ${notification.createdAt}`,
+      },
+    });
     return true;
   } catch (err) {
-    console.error("Failed to dispatch alert email:", err);
+    console.warn("Could not queue alert in mail collection:", err);
     return false;
   }
 }

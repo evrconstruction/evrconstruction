@@ -17,12 +17,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid directive update payload" }, { status: 400 });
     }
 
-    const success = updateDirectiveStatus(id, status);
-    if (!success) {
-      return NextResponse.json({ error: "Directive not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true, id, status });
+    const updatedDirectives = await updateDirectiveStatus(id, status);
+    return NextResponse.json({ success: true, id, status, directives: updatedDirectives });
   } catch (error) {
     console.error("Error updating directive status:", error);
     return NextResponse.json({ error: "Failed to update directive status" }, { status: 500 });

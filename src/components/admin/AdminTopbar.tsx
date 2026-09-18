@@ -239,7 +239,7 @@ export function AdminTopbar() {
                             )}
                             {notif.emailDispatched && (
                               <span className="inline-flex items-center gap-1 rounded bg-slate-100 text-slate-600 px-1.5 py-0.2 text-[9px] font-medium">
-                                <span>📧 Email Dispatched</span>
+                                <span>✉ Mail Queued</span>
                               </span>
                             )}
                           </div>
@@ -256,7 +256,7 @@ export function AdminTopbar() {
 
               {/* Footer */}
               <div className="border-t border-slate-100 bg-slate-50/50 p-2.5 text-center text-[10px] font-medium text-slate-500 flex items-center justify-between px-4">
-                <span className="text-[10px] text-slate-500">Alerts sent to:</span>
+                <span className="text-[10px] text-slate-500">Alerts for:</span>
                 <span className="font-mono text-[10px] text-slate-600 font-semibold">
                   contact@evrconstructions.com
                 </span>

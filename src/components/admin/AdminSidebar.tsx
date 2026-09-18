@@ -64,7 +64,16 @@ import { useAuth } from "@/lib/firebase/auth-context";
 
 export function AdminSidebar() {
   const pathname = usePathname();
-  const { logOut } = useAuth();
+  const { logOut, user } = useAuth();
+
+  const displayName = user?.displayName || "EVR Admin";
+  const email = user?.email || "contact@evrconstructions.com";
+  const initials = displayName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .substring(0, 2)
+    .toUpperCase() || "EV";
 
   return (
     <aside className="border-b border-[#dfe2dd] bg-[#1f2521] text-white lg:sticky lg:top-0 lg:h-screen lg:w-68 lg:shrink-0 lg:border-b-0 lg:border-r lg:border-white/10 flex flex-col justify-between">
@@ -113,11 +122,11 @@ export function AdminSidebar() {
       <div className="border-t border-white/10 p-4 mx-2 mb-2 rounded-xl bg-white/5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#f4b400] text-xs font-bold text-[#1f2521]">
-            EV
+            {initials}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-bold text-white">EVR Admin</p>
-            <p className="truncate text-[10px] text-white/45 font-mono">contact@evrconstructions.com</p>
+            <p className="truncate text-xs font-bold text-white">{displayName}</p>
+            <p className="truncate text-[10px] text-white/45 font-mono">{email}</p>
           </div>
         </div>
 

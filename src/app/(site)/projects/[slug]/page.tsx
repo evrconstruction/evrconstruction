@@ -4,6 +4,34 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SERVICES, type ServiceSlug } from "@/lib/services";
 import { Gallery } from "@/components/site/Gallery";
+import { adminDb } from "@/lib/firebase-admin";
+
+export const revalidate = 60;
+
+function resolveStorageSrc(src: string): string {
+  if (!src) return "/images/hero.jpg";
+  if (src.startsWith("/api/images/")) return src;
+  if (src.includes("firebasestorage.googleapis.com")) {
+    try {
+      const url = new URL(src);
+      const match = url.pathname.match(/\/o\/([^?]+)/);
+      if (match?.[1]) {
+        const storagePath = decodeURIComponent(match[1]);
+        if (storagePath.startsWith("posts/")) {
+          return `/api/images/${storagePath}`;
+        }
+      }
+    } catch {}
+  }
+  if (!src.startsWith("http://") && !src.startsWith("https://") && !src.startsWith("data:")) {
+    const clean = src.startsWith("/") ? src.slice(1) : src;
+    if (clean.startsWith("posts/")) {
+      return `/api/images/${clean}`;
+    }
+    return `/api/images/posts/${clean}`;
+  }
+  return src;
+}
 
 type ServicePageProps = {
   params: Promise<{ slug: string }>;
@@ -56,6 +84,28 @@ export default async function ServiceProjectsPage({ params }: ServicePageProps) 
   if (!service) {
     notFound();
   }
+
+  let dynamicGalleryItems: Array<{ src: string; alt: string; caption: string }> = [];
+  try {
+    const postsSnap = await adminDb
+      .collection("posts")
+      .where("category", "==", service.category)
+      .where("published", "==", true)
+      .get();
+
+    dynamicGalleryItems = postsSnap.docs.map((doc) => {
+      const d = doc.data();
+      return {
+        src: resolveStorageSrc(d.src || ""),
+        alt: d.alt || d.caption || `${service.title} project by EVR Construction`,
+        caption: d.caption || `${service.title} construction by EVR Construction LLC`,
+      };
+    });
+  } catch (dbErr) {
+    console.warn("Failed to fetch published posts for gallery:", dbErr);
+  }
+
+  const allGalleryItems = [...dynamicGalleryItems, ...service.gallery];
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -156,7 +206,7 @@ export default async function ServiceProjectsPage({ params }: ServicePageProps) 
           </p>
         </div>
 
-        <Gallery items={service.gallery} />
+        <Gallery items={allGalleryItems} />
 
         <div className="mt-16 flex flex-col items-center rounded-sm bg-cloud p-10 text-center">
           <h2 className="font-heading text-2xl font-bold text-charcoal">

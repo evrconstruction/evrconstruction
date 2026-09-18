@@ -22,15 +22,16 @@ flowchart TB
     subgraph FirebaseLayer ["Google Cloud & Firebase Backend"]
         AppHosting["Firebase App Hosting (us-east4)\nContainerized Cloud Run SSR"]
         FirebaseAuth["Firebase Authentication\nGoogle OAuth Session Management"]
-        Firestore["Cloud Firestore\n• posts • backlinks • activity_logs\n• tracked_keywords • seo_agent_*"]
+        Firestore["Cloud Firestore\n• posts • leads • admin_notifications\n• backlinks • activity_logs • tracked_keywords\n• seo_agent_* • mail"]
         CloudStorage["Firebase Cloud Storage\n/posts/* Portfolio Assets"]
+        VertexAI["Google Cloud Vertex AI\nGemini 3 Vision (gemini-3-flash)"]
     end
 
     subgraph IntelligenceLayer ["External Intelligence & Telemetry"]
-        GA4["Google Analytics 4 API\n(Traffic & User Telemetry)"]
-        GSC["Google Search Console API\n(Keywords & Indexing)"]
+        GA4["Google Analytics 4 API\n(Live Traffic & User Dimensions)"]
+        GSC["Google Search Console API\n(Live Ranked Queries & CTR)"]
         Crawler["Live HTTP Verifier\n(DoFollow / NoFollow & Status)"]
-        AgentEngine["Autonomous SEO Agent\n(7 Daily Diagnostic Skills)"]
+        AgentEngine["Autonomous SEO Agent\n(7 Live Diagnostic Skills)"]
     end
 
     PublicSite --> SiteRoutes
@@ -42,6 +43,7 @@ flowchart TB
     APIRoutes --> Firestore
     APIRoutes --> CloudStorage
     APIRoutes --> AppHosting
+    APIRoutes --> VertexAI
 
     AdminRoutes --> AgentEngine
     AgentEngine --> GA4
@@ -54,16 +56,18 @@ flowchart TB
 
 ## 🚀 Key Features
 
-### 1. High-Performance Public Site
+### 1. High-Performance Public Site & Dynamic Portfolio
 - **SSR & SSG Architecture**: Pre-rendered service portfolio pages with Next.js Turbopack for sub-second load times.
 - **Local SEO & Schema Markup**: Full JSON-LD `LocalBusiness`, `Organization`, and `Service` schema across all 12 East Tennessee service areas.
-- **Real-Time Consultation Pipeline**: Lead capture logging submissions directly to Firestore with instant activity telemetry.
+- **Real-Time Consultation Pipeline**: Lead capture routes through `POST /api/contact`, permanently persisting inquiries to Firestore `leads` with admin notification and mail queue dispatch.
+- **Connected Project Galleries**: Public service pages dynamically query Firestore `posts` by category, merging client-uploaded builds with the core portfolio via 60-second ISR.
 
 ### 2. Admin Operations Suite (`/admin`)
 - **Real-Time Telemetry Dashboard**: Zero synthetic data; displays verified visitor counts, consult inquiries, phone link clicks, and cloud health.
-- **Posts Manager (`/admin/posts`)**: Image upload pipeline connected to Firebase Cloud Storage with automated local geo-tagging.
-- **Keywords & Search Console Tracker (`/admin/keywords`)**: Merges tracked target queries with live Google Search Console position data.
-- **Backlinks & Citation Verifier (`/admin/backlinks`)**: Live crawler performing HTTP status and `DoFollow`/`NoFollow` link inspections across regional citations (BBB, Yelp, Bizapedia, Chambers).
+- **Posts Manager (`/admin/posts`)**: Image upload pipeline connected to Firebase Cloud Storage, analyzed with **Google Gemini 3 (`gemini-3-flash`)** on Vertex AI for automated local East TN captioning.
+- **Keywords & Search Console Tracker (`/admin/keywords`)**: Merges tracked target queries with live Google Search Console position, clicks, and CTR data.
+- **Backlinks & Citation Verifier (`/admin/backlinks`)**: Live crawler performing HTTP status and `DoFollow`/`NoFollow` link inspections across regional citations (BBB, Yelp, Bizapedia, Chambers), with verified 404/network error handling.
+- **Notifications & Alert Center**: Fully persistent alert store in Firestore `admin_notifications` surviving Cloud Run container scaling events.
 
 ### 3. Autonomous 7-Day SEO Agent Orchestrator (`/admin/seo-agent`)
 

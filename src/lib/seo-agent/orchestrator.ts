@@ -239,7 +239,7 @@ export async function runSkill(skillId: string): Promise<{ success: boolean; log
     await adminDb.collection("seo_agent_runs").add(log).catch(() => {});
 
     if (newDirectives.some((d) => d.priority === "High")) {
-      addNotification({
+      await addNotification({
         type: "alert",
         priority: "high",
         category: "seo_agent",
