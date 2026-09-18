@@ -87,6 +87,23 @@ export async function GET() {
   const lost = backlinksList.filter((b) => b.status === "Lost").length;
   const noFollow = backlinksList.filter((b) => b.type === "NoFollow").length;
 
+  let outreachList: OutreachDraft[] = [];
+  try {
+    const outreachSnap = await adminDb.collection("outreach_drafts").get();
+    outreachList = outreachSnap.docs.map((doc) => {
+      const d = doc.data();
+      return {
+        id: doc.id,
+        targetDomain: d.targetDomain || "",
+        opportunity: d.opportunity || "",
+        suggestedAnchor: d.suggestedAnchor || "",
+        status: d.status || "Draft",
+      };
+    });
+  } catch (err) {
+    console.warn("Firestore fetch error on outreach_drafts:", err);
+  }
+
   return NextResponse.json({
     metrics: {
       total,
@@ -95,29 +112,7 @@ export async function GET() {
       noFollow,
     },
     backlinks: backlinksList,
-    outreach: [
-      {
-        id: "out-1",
-        targetDomain: "knoxvillechamber.com",
-        opportunity: "Knoxville Chamber of Commerce General Contractor Directory listing",
-        suggestedAnchor: "EVR Construction Knoxville",
-        status: "Draft",
-      },
-      {
-        id: "out-2",
-        targetDomain: "farragutchamber.com",
-        opportunity: "Farragut West Knox Chamber Directory — Local Deck & Remodeling Contractor",
-        suggestedAnchor: "deck builder Farragut TN",
-        status: "Draft",
-      },
-      {
-        id: "out-3",
-        targetDomain: "trex.com/find-a-builder",
-        opportunity: "Trex Pro Authorized Deck Contractor East Tennessee partner listing",
-        suggestedAnchor: "EVR Construction LLC",
-        status: "Draft",
-      },
-    ],
+    outreach: outreachList,
   });
 }
 

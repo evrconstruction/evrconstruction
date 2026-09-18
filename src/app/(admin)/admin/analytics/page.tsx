@@ -358,20 +358,26 @@ export default function AnalyticsPage() {
                 </h3>
 
                 <div className="space-y-4">
-                  {(data?.sources || []).map((source) => (
-                    <div key={source.name} className="space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold text-slate-800">{source.name}</span>
-                        <span className="text-slate-500 font-mono">{source.visits} visits ({source.percent}%)</span>
+                  {(data?.sources || []).length === 0 ? (
+                    <p className="text-xs text-slate-400 py-6 text-center">
+                      No traffic sources recorded in this period.
+                    </p>
+                  ) : (
+                    (data?.sources || []).map((source) => (
+                      <div key={source.name} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-slate-800">{source.name}</span>
+                          <span className="text-slate-500 font-mono">{source.visits} visits ({source.percent}%)</span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${source.color} rounded-full`}
+                            style={{ width: `${source.percent}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${source.color} rounded-full`}
-                          style={{ width: `${source.percent}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -398,16 +404,24 @@ export default function AnalyticsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {(data?.topPages || []).map((page) => (
-                      <tr key={page.path} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="px-6 py-3.5 font-semibold text-slate-800">
-                          {page.path}
-                        </td>
-                        <td className="px-6 py-3.5 text-right font-mono font-bold text-slate-700">
-                          {page.views.toLocaleString()}
+                    {(data?.topPages || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={2} className="px-6 py-8 text-center text-xs text-slate-400">
+                          No page views recorded in this period.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      (data?.topPages || []).map((page) => (
+                        <tr key={page.path} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="px-6 py-3.5 font-semibold text-slate-800">
+                            {page.path}
+                          </td>
+                          <td className="px-6 py-3.5 text-right font-mono font-bold text-slate-700">
+                            {page.views.toLocaleString()}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -425,14 +439,18 @@ export default function AnalyticsPage() {
                       Top Cities
                     </h4>
                     <div className="space-y-2.5">
-                      {(data?.demographics.cities || []).map((item) => (
-                        <div key={item.city} className="flex items-center justify-between text-xs">
-                          <span className="text-slate-700 font-medium">{item.city}</span>
-                          <span className="font-mono font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-200/60">
-                            {item.count}
-                          </span>
-                        </div>
-                      ))}
+                      {(data?.demographics?.cities || []).length === 0 ? (
+                        <p className="text-xs text-slate-400 py-3">No location data recorded yet.</p>
+                      ) : (
+                        (data?.demographics?.cities || []).map((item) => (
+                          <div key={item.city} className="flex items-center justify-between text-xs">
+                            <span className="text-slate-700 font-medium">{item.city}</span>
+                            <span className="font-mono font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-200/60">
+                              {item.count}
+                            </span>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
 
@@ -441,17 +459,21 @@ export default function AnalyticsPage() {
                       Devices
                     </h4>
                     <div className="space-y-3">
-                      {(data?.demographics.devices || []).map((d) => (
-                        <div key={d.device} className="space-y-1">
-                          <div className="flex justify-between text-xs">
-                            <span className="text-slate-700 font-medium">{d.device}</span>
-                            <span className="font-mono text-slate-500 font-bold">{d.percent}%</span>
+                      {(data?.demographics?.devices || []).length === 0 ? (
+                        <p className="text-xs text-slate-400 py-3">No device data recorded yet.</p>
+                      ) : (
+                        (data?.demographics?.devices || []).map((d) => (
+                          <div key={d.device} className="space-y-1">
+                            <div className="flex justify-between text-xs">
+                              <span className="text-slate-700 font-medium">{d.device}</span>
+                              <span className="font-mono text-slate-500 font-bold">{d.percent}%</span>
+                            </div>
+                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                              <div className={`h-full ${d.color} rounded-full`} style={{ width: `${d.percent}%` }} />
+                            </div>
                           </div>
-                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                            <div className={`h-full ${d.color} rounded-full`} style={{ width: `${d.percent}%` }} />
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>

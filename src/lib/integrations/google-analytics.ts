@@ -17,7 +17,7 @@ export interface GA4ReportResult {
   topPages: { path: string; title: string; views: number; percent: string }[];
   demographics: {
     cities: { city: string; count: string; users: number }[];
-    devices: { type: string; percent: number; color: string }[];
+    devices: { device: string; type: string; percent: number; color: string }[];
   };
 }
 
@@ -75,32 +75,90 @@ export async function fetchGA4Analytics(days = 30): Promise<GA4ReportResult> {
         console.warn("GA4 Realtime API error:", rtErr);
       }
 
-      // 2. Fetch Historical Report from GA4
-      const res = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${cleanPropId}:runReport`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          dateRanges: [{ startDate: start, endDate: end }],
-          metrics: [
-            { name: "activeUsers" },
-            { name: "newUsers" },
-            { name: "engagementRate" },
-            { name: "sessions" },
-            { name: "screenPageViews" },
-            { name: "averageSessionDuration" },
-            { name: "conversions" },
-          ],
-          dimensions: [{ name: "date" }],
-          orderBys: [{ dimension: { dimensionName: "date" } }],
-          metricAggregations: ["TOTAL"],
+      // 2. Fetch Live Reports from GA4 Data API in parallel
+      const [mainRes, sourcesRes, pagesRes, citiesRes, devicesRes] = await Promise.allSettled([
+        fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${cleanPropId}:runReport`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            dateRanges: [{ startDate: start, endDate: end }],
+            metrics: [
+              { name: "activeUsers" },
+              { name: "newUsers" },
+              { name: "engagementRate" },
+              { name: "sessions" },
+              { name: "screenPageViews" },
+              { name: "averageSessionDuration" },
+              { name: "conversions" },
+            ],
+            dimensions: [{ name: "date" }],
+            orderBys: [{ dimension: { dimensionName: "date" } }],
+            metricAggregations: ["TOTAL"],
+          }),
         }),
-      });
+        fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${cleanPropId}:runReport`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            dateRanges: [{ startDate: start, endDate: end }],
+            metrics: [{ name: "sessions" }],
+            dimensions: [{ name: "sessionDefaultChannelGroup" }],
+            orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+            limit: 10,
+          }),
+        }),
+        fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${cleanPropId}:runReport`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            dateRanges: [{ startDate: start, endDate: end }],
+            metrics: [{ name: "screenPageViews" }],
+            dimensions: [{ name: "pagePath" }, { name: "pageTitle" }],
+            orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }],
+            limit: 10,
+          }),
+        }),
+        fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${cleanPropId}:runReport`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            dateRanges: [{ startDate: start, endDate: end }],
+            metrics: [{ name: "activeUsers" }],
+            dimensions: [{ name: "city" }],
+            orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
+            limit: 10,
+          }),
+        }),
+        fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${cleanPropId}:runReport`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            dateRanges: [{ startDate: start, endDate: end }],
+            metrics: [{ name: "activeUsers" }],
+            dimensions: [{ name: "deviceCategory" }],
+            orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
+            limit: 5,
+          }),
+        }),
+      ]);
 
-      if (res.ok) {
-        const json = await res.json();
+      if (mainRes.status === "fulfilled" && mainRes.value.ok) {
+        const json = await mainRes.value.json();
         const totals = json.totals?.[0]?.metricValues || [];
         const visitors = Math.max(parseInt(totals[0]?.value || "0", 10), realtimeActiveUsers);
         const newUsersCount = Math.max(parseInt(totals[1]?.value || "0", 10), realtimeActiveUsers);
@@ -140,6 +198,118 @@ export async function fetchGA4Analytics(days = 30): Promise<GA4ReportResult> {
           });
         }
 
+        // Parse Real Traffic Sources from GA4
+        let sources: { name: string; percent: number; visits: number; color: string }[] = [];
+        if (sourcesRes.status === "fulfilled" && sourcesRes.value.ok) {
+          try {
+            const sJson = await sourcesRes.value.json();
+            const sRows = sJson.rows || [];
+            const totalSourceVisits = sRows.reduce(
+              (sum: number, r: { metricValues?: { value?: string }[] }) =>
+                sum + parseInt(r.metricValues?.[0]?.value || "0", 10),
+              0
+            );
+
+            sources = sRows.map((r: { dimensionValues?: { value?: string }[]; metricValues?: { value?: string }[] }) => {
+              const name = r.dimensionValues?.[0]?.value || "Direct";
+              const visits = parseInt(r.metricValues?.[0]?.value || "0", 10);
+              const percent = totalSourceVisits > 0 ? Math.round((visits / totalSourceVisits) * 100) : 0;
+
+              let color = "bg-blue-500";
+              const lower = name.toLowerCase();
+              if (lower.includes("search")) color = "bg-emerald-500";
+              else if (lower.includes("referral")) color = "bg-purple-500";
+              else if (lower.includes("social")) color = "bg-pink-500";
+              else if (lower.includes("paid")) color = "bg-amber-500";
+              else if (lower.includes("direct")) color = "bg-blue-500";
+              else color = "bg-slate-500";
+
+              return { name, percent, visits, color };
+            });
+          } catch (sErr) {
+            console.warn("Error parsing GA4 sources report:", sErr);
+          }
+        }
+
+        // Parse Real Top Pages from GA4
+        let topPages: { path: string; title: string; views: number; percent: string }[] = [];
+        if (pagesRes.status === "fulfilled" && pagesRes.value.ok) {
+          try {
+            const pJson = await pagesRes.value.json();
+            const pRows = pJson.rows || [];
+            const totalReportViews = pRows.reduce(
+              (sum: number, r: { metricValues?: { value?: string }[] }) =>
+                sum + parseInt(r.metricValues?.[0]?.value || "0", 10),
+              0
+            );
+
+            topPages = pRows.map((r: { dimensionValues?: { value?: string }[]; metricValues?: { value?: string }[] }) => {
+              const path = r.dimensionValues?.[0]?.value || "/";
+              const title = r.dimensionValues?.[1]?.value || path;
+              const views = parseInt(r.metricValues?.[0]?.value || "0", 10);
+              const pct = totalReportViews > 0 ? Math.round((views / totalReportViews) * 100) : 0;
+              return {
+                path,
+                title,
+                views,
+                percent: `${pct}%`,
+              };
+            });
+          } catch (pErr) {
+            console.warn("Error parsing GA4 pages report:", pErr);
+          }
+        }
+
+        // Parse Real Demographics (Cities & Devices) from GA4
+        let cities: { city: string; count: string; users: number }[] = [];
+        if (citiesRes.status === "fulfilled" && citiesRes.value.ok) {
+          try {
+            const cJson = await citiesRes.value.json();
+            const cRows = cJson.rows || [];
+            cities = cRows.map((r: { dimensionValues?: { value?: string }[]; metricValues?: { value?: string }[] }) => {
+              const rawCity = r.dimensionValues?.[0]?.value || "(not set)";
+              const city = rawCity === "(not set)" ? "(Not Set)" : rawCity;
+              const users = parseInt(r.metricValues?.[0]?.value || "0", 10);
+              return {
+                city,
+                count: users.toLocaleString(),
+                users,
+              };
+            });
+          } catch (cErr) {
+            console.warn("Error parsing GA4 cities report:", cErr);
+          }
+        }
+
+        let devices: { device: string; type: string; percent: number; color: string }[] = [];
+        if (devicesRes.status === "fulfilled" && devicesRes.value.ok) {
+          try {
+            const dJson = await devicesRes.value.json();
+            const dRows = dJson.rows || [];
+            const totalDevUsers = dRows.reduce(
+              (sum: number, r: { metricValues?: { value?: string }[] }) =>
+                sum + parseInt(r.metricValues?.[0]?.value || "0", 10),
+              0
+            );
+
+            devices = dRows.map((r: { dimensionValues?: { value?: string }[]; metricValues?: { value?: string }[] }) => {
+              const raw = (r.dimensionValues?.[0]?.value || "desktop").toLowerCase();
+              const device = raw.charAt(0).toUpperCase() + raw.slice(1);
+              const users = parseInt(r.metricValues?.[0]?.value || "0", 10);
+              const percent = totalDevUsers > 0 ? Math.round((users / totalDevUsers) * 100) : 0;
+              const color = device === "Desktop" ? "bg-blue-500" : device === "Mobile" ? "bg-emerald-500" : "bg-purple-500";
+              return {
+                device,
+                type: device,
+                percent,
+                color,
+              };
+            });
+          } catch (dErr) {
+            console.warn("Error parsing GA4 devices report:", dErr);
+          }
+        }
+
         return {
           connected: true,
           propertyId,
@@ -152,15 +322,11 @@ export async function fetchGA4Analytics(days = 30): Promise<GA4ReportResult> {
             conversions: conversions.toString(),
           },
           timeSeries,
-          sources: sessions > 0 ? [
-            { name: "Direct / Live Visitors", percent: 100, visits: sessions, color: "bg-blue-500" },
-          ] : [],
-          topPages: pageViews > 0 ? [
-            { path: "/", title: "Home | EVR Construction", views: pageViews, percent: "100%" },
-          ] : [],
+          sources,
+          topPages,
           demographics: {
-            cities: visitors > 0 ? [{ city: "East Tennessee", count: visitors.toString(), users: visitors }] : [],
-            devices: visitors > 0 ? [{ type: "Desktop", percent: 100, color: "bg-blue-500" }] : [],
+            cities,
+            devices,
           },
         };
       }

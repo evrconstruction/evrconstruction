@@ -312,24 +312,32 @@ export default function BacklinksPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {outreach.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="px-6 py-4 font-bold text-slate-900">
-                      {item.targetDomain}
-                    </td>
-                    <td className="px-6 py-4 text-slate-700 max-w-md">
-                      {item.opportunity}
-                    </td>
-                    <td className="px-6 py-4 font-mono font-semibold text-blue-600">
-                      &quot;{item.suggestedAnchor}&quot;
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <span className="inline-block rounded-md bg-slate-100 px-2.5 py-1 font-bold text-slate-700 text-xs">
-                        {item.status}
-                      </span>
+                {outreach.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-10 text-center text-xs text-slate-400">
+                      No outreach pitch drafts currently queued.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  outreach.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="px-6 py-4 font-bold text-slate-900">
+                        {item.targetDomain}
+                      </td>
+                      <td className="px-6 py-4 text-slate-700 max-w-md">
+                        {item.opportunity}
+                      </td>
+                      <td className="px-6 py-4 font-mono font-semibold text-blue-600">
+                        &quot;{item.suggestedAnchor}&quot;
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="inline-block rounded-md bg-slate-100 px-2.5 py-1 font-bold text-slate-700 text-xs">
+                          {item.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

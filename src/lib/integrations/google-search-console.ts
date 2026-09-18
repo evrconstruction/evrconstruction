@@ -19,6 +19,8 @@ export interface GSCReportResult {
     top10: number;
     top20: number;
     top50: number;
+    totalClicks: number;
+    totalImpressions: number;
   };
   changes: {
     improved: number;
@@ -176,14 +178,30 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
     }
   });
 
+  // 4. Sort ranked keywords first (ordered by Google ranking position #1, #2, #3...), then alphabetical for unranked target keywords
+  combinedKeywords.sort((a, b) => {
+    if (a.position > 0 && b.position > 0) {
+      return a.position - b.position;
+    }
+    if (a.position > 0 && b.position === 0) {
+      return -1;
+    }
+    if (a.position === 0 && b.position > 0) {
+      return 1;
+    }
+    return a.keyword.localeCompare(b.keyword);
+  });
+
   const total = combinedKeywords.length;
   const indexed = combinedKeywords.filter((k) => k.position > 0);
   const top10 = indexed.filter((k) => k.position <= 10).length;
   const top20 = indexed.filter((k) => k.position <= 20).length;
   const top50 = indexed.filter((k) => k.position <= 50).length;
+  const totalClicks = indexed.reduce((acc, k) => acc + (k.clicks || 0), 0);
+  const totalImpressions = indexed.reduce((acc, k) => acc + (k.impressions || 0), 0);
 
   return {
-    stats: { total, top10, top20, top50 },
+    stats: { total, top10, top20, top50, totalClicks, totalImpressions },
     changes: { improved: top10, declined: 0, stable: Math.max(0, indexed.length - top10) },
     keywords: combinedKeywords,
   };
