@@ -96,13 +96,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Event and label required" }, { status: 400 });
     }
 
-    // Restrict public calls to form_submit only
-    if (event !== "form_submit") {
-      try {
-        await verifyAdminSession();
-      } catch {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    try {
+      await verifyAdminSession();
+    } catch {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Payload validation

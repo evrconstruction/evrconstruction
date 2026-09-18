@@ -42,7 +42,7 @@ export function AdminTopbar() {
     }
 
     loadNotifs();
-    const interval = setInterval(loadNotifs, 15000);
+    const interval = setInterval(loadNotifs, 60000);
     return () => {
       isMounted = false;
       clearInterval(interval);

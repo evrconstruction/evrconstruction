@@ -51,7 +51,7 @@ Output valid JSON ONLY in this format:
 
     if (googleToken) {
       try {
-        const vertexUrl = `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/global/publishers/google/models/gemini-3-flash:generateContent`;
+        const vertexUrl = `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/global/publishers/google/models/gemini-3.7-flash:generateContent`;
         const vertexRes = await fetch(vertexUrl, {
           method: "POST",
           headers: {
@@ -106,7 +106,7 @@ Output valid JSON ONLY in this format:
     if (apiKey) {
       try {
         const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

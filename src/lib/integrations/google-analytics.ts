@@ -3,6 +3,7 @@ import { getGoogleAccessToken } from "./google-auth";
 
 export interface GA4ReportResult {
   connected: boolean;
+  error?: string;
   propertyId: string;
   days: number;
   metrics: {
@@ -39,8 +40,30 @@ export async function fetchGA4Analytics(days = 30): Promise<GA4ReportResult> {
     "https://www.googleapis.com/auth/analytics.readonly",
   ]);
 
-  if (token) {
-    try {
+  if (!token) {
+    return {
+      connected: false,
+      error: "Google Analytics 4 access token could not be acquired.",
+      propertyId,
+      days,
+      metrics: {
+        visitors: "0",
+        newUsers: "0",
+        engagementRate: "0.0%",
+        avgSessionDuration: "0m 0s",
+        conversions: "0",
+      },
+      timeSeries: [],
+      sources: [],
+      topPages: [],
+      demographics: {
+        cities: [],
+        devices: [],
+      },
+    };
+  }
+
+  try {
       const endDate = new Date();
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
@@ -50,7 +73,6 @@ export async function fetchGA4Analytics(days = 30): Promise<GA4ReportResult> {
       const cleanPropId = propertyId.replace(/^properties\//, "").replace(/^G-/, "");
       // 1. Fetch Realtime Active Users & Views from GA4
       let realtimeActiveUsers = 0;
-      let realtimePageViews = 0;
       try {
         const rtRes = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${cleanPropId}:runRealtimeReport`, {
           method: "POST",
@@ -69,7 +91,6 @@ export async function fetchGA4Analytics(days = 30): Promise<GA4ReportResult> {
           const rtJson = await rtRes.json();
           const rtTotals = rtJson.rows?.[0]?.metricValues || [];
           realtimeActiveUsers = parseInt(rtTotals[0]?.value || "0", 10);
-          realtimePageViews = parseInt(rtTotals[1]?.value || "0", 10);
         }
       } catch (rtErr) {
         console.warn("GA4 Realtime API error:", rtErr);
@@ -163,8 +184,6 @@ export async function fetchGA4Analytics(days = 30): Promise<GA4ReportResult> {
         const visitors = Math.max(parseInt(totals[0]?.value || "0", 10), realtimeActiveUsers);
         const newUsersCount = Math.max(parseInt(totals[1]?.value || "0", 10), realtimeActiveUsers);
         const engRateVal = parseFloat(totals[2]?.value || "0") * 100;
-        const sessions = Math.max(parseInt(totals[3]?.value || "0", 10), realtimeActiveUsers);
-        const pageViews = Math.max(parseInt(totals[4]?.value || "0", 10), realtimePageViews);
         const avgDurationSecs = Math.round(parseFloat(totals[5]?.value || "0"));
         const conversions = parseInt(totals[6]?.value || "0", 10);
 
@@ -329,16 +348,59 @@ export async function fetchGA4Analytics(days = 30): Promise<GA4ReportResult> {
             devices,
           },
         };
+      } else {
+        const errorDetail = mainRes.status === "fulfilled" ? `HTTP ${mainRes.value.status}` : String(mainRes.reason);
+        console.warn("GA4 runReport error:", errorDetail);
+        return {
+          connected: false,
+          error: `GA4 Data API error (${errorDetail})`,
+          propertyId,
+          days,
+          metrics: {
+            visitors: "0",
+            newUsers: "0",
+            engagementRate: "0.0%",
+            avgSessionDuration: "0m 0s",
+            conversions: "0",
+          },
+          timeSeries: [],
+          sources: [],
+          topPages: [],
+          demographics: {
+            cities: [],
+            devices: [],
+          },
+        };
       }
     } catch (apiErr) {
       console.warn("GA4 Live API call error:", apiErr);
+      return {
+        connected: false,
+        error: apiErr instanceof Error ? apiErr.message : "GA4 Live API call error",
+        propertyId,
+        days,
+        metrics: {
+          visitors: "0",
+          newUsers: "0",
+          engagementRate: "0.0%",
+          avgSessionDuration: "0m 0s",
+          conversions: "0",
+        },
+        timeSeries: [],
+        sources: [],
+        topPages: [],
+        demographics: {
+          cities: [],
+          devices: [],
+        },
+      };
     }
-  }
 
-  // Clean Zero-State (Starting Fresh with Live Google Analytics)
+  // Fallback Zero-State
   return {
-    connected: true,
-    propertyId: "G-19DRNQBM8T",
+    connected: false,
+    error: "GA4 reporting unavailable",
+    propertyId,
     days,
     metrics: {
       visitors: "0",

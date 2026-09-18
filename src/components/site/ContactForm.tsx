@@ -11,6 +11,7 @@ const initialForm = {
   phone: "",
   email: "",
   message: "",
+  company_website: "",
 };
 
 const inputClasses =
@@ -41,6 +42,7 @@ export function ContactForm() {
           phone: form.phone || "Not provided",
           email: form.email,
           message: form.message,
+          company_website: form.company_website,
         }),
       });
 
@@ -73,6 +75,19 @@ export function ContactForm() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="mt-5 flex flex-1 flex-col gap-4">
+          {/* Honeypot field for bot detection — hidden from legitimate users */}
+          <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", opacity: 0, height: 0, width: 0, overflow: "hidden" }}>
+            <label htmlFor="company_website">Company Website</label>
+            <input
+              id="company_website"
+              type="text"
+              name="company_website"
+              tabIndex={-1}
+              autoComplete="off"
+              value={form.company_website}
+              onChange={(event) => updateField("company_website", event.target.value)}
+            />
+          </div>
           <label htmlFor="firstName" className="flex flex-col gap-1.5">
             <span className="font-heading text-xs font-semibold uppercase tracking-wide text-muted">
               First Name

@@ -6,7 +6,11 @@ import { fetchGA4Analytics } from "@/lib/integrations/google-analytics";
 export async function runFridayConversionsSkill(): Promise<SkillResult> {
   const start = Date.now();
 
-  const activitySnap = await adminDb.collection("activity_logs").get();
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const activitySnap = await adminDb
+    .collection("activity_logs")
+    .where("timestamp", ">=", thirtyDaysAgo)
+    .get();
   const formSubmits = activitySnap.docs.filter((d) => d.data().event === "form_submit").length;
   const phoneClicks = activitySnap.docs.filter((d) => d.data().event === "click").length;
 

@@ -39,9 +39,9 @@ export async function runSundayDigestSkill(): Promise<SkillResult> {
 
   if (openDirectivesCount > 0) {
     directives.push({
-      id: `dir-sun-${Date.now()}`,
+      id: "dir-weekly-digest",
       skillId: "skill-sunday",
-      title: `Resolve ${openDirectivesCount} Open SEO Directives`,
+      title: "Weekly SEO Action Items Review",
       description: `There are currently ${openDirectivesCount} open action items across keywords, citations, and technical audits. Addressing high-priority items will improve East Tennessee search visibility.`,
       impact: "Improves overall local search and citation rankings",
       priority: "High",

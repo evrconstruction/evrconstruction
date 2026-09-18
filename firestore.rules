@@ -6,7 +6,8 @@ service cloud.firestore {
     // Helper functions
     function isAdmin() {
       return request.auth != null && 
-             request.auth.token.email == 'contact@evrconstructions.com';
+             request.auth.token.email == 'contact@evrconstructions.com' &&
+             request.auth.token.email_verified == true;
     }
 
     // Project posts collection - public read, admin write
@@ -34,8 +35,11 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Backlinks collection - admin only
+    // Backlinks collection and outreach drafts - admin only
     match /backlinks/{backlinkId} {
+      allow read, write: if isAdmin();
+    }
+    match /outreach_drafts/{draftId} {
       allow read, write: if isAdmin();
     }
 

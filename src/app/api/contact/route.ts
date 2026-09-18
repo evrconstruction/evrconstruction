@@ -2,10 +2,46 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { addNotification } from "@/lib/notifications";
 
+// IP rate limiter: max 5 requests per 10 minutes per IP
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const MAX_REQUESTS_PER_WINDOW = 5;
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now > entry.resetTime) {
+    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+
+  if (entry.count >= MAX_REQUESTS_PER_WINDOW) {
+    return true;
+  }
+
+  entry.count += 1;
+  return false;
+}
+
 export async function POST(request: Request) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+    if (isRateLimited(ip)) {
+      return NextResponse.json(
+        { error: "Too many inquiries submitted from this connection. Please call us directly at (865) 221-7275." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
-    const { firstName, lastName, city, phone, email, message } = body;
+    const { firstName, lastName, city, phone, email, message, company_website } = body;
+
+    // Honeypot check for automated bot protection
+    if (company_website) {
+      // Silently accept to trap bots without generating records or emails
+      return NextResponse.json({ success: true, message: "Inquiry successfully recorded and queued" });
+    }
 
     // Validation
     if (!firstName || !lastName || !city || !email || !message) {
@@ -60,7 +96,7 @@ export async function POST(request: Request) {
       console.warn("Failed to write contact activity log:", err);
     });
 
-    // 3. Create Admin Notification
+    // 3. Create Admin Notification (triggerEmail: false prevents duplicate alert email, as Step 4 sends the dedicated lead email)
     try {
       await addNotification({
         type: "alert",
@@ -69,6 +105,7 @@ export async function POST(request: Request) {
         title: `New Lead: ${cleanFirst} ${cleanLast} (${cleanCity})`,
         message: `${cleanPhone} · ${cleanEmail}\n"${cleanMessage.substring(0, 100)}"`,
         actionHref: "/admin/analytics",
+        triggerEmail: false,
       });
     } catch (notifErr) {
       console.warn("Failed to create admin notification for lead:", notifErr);

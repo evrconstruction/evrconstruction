@@ -24,10 +24,26 @@ function getCredentials(): ServiceAccountCredentials | null {
   return null;
 }
 
+interface CachedToken {
+  token: string;
+  expiresAt: number;
+}
+
+const tokenCache = new Map<string, CachedToken>();
+
 /**
- * Mint a scoped Google OAuth access token for GA4 or Search Console
+ * Mint a scoped Google OAuth access token for GA4 or Search Console,
+ * with in-memory caching to avoid redundant round-trips.
  */
 export async function getGoogleAccessToken(scopes: string[]): Promise<string | null> {
+  const cacheKey = scopes.slice().sort().join(" ");
+  const cached = tokenCache.get(cacheKey);
+
+  // Return cached token if it has at least 5 minutes of validity remaining
+  if (cached && cached.expiresAt > Date.now() + 5 * 60 * 1000) {
+    return cached.token;
+  }
+
   const creds = getCredentials();
   if (!creds) return null;
 
@@ -39,7 +55,17 @@ export async function getGoogleAccessToken(scopes: string[]): Promise<string | n
     });
 
     const tokenResponse = await client.getAccessToken();
-    return tokenResponse.token || null;
+    const token = tokenResponse.token || null;
+
+    if (token) {
+      // Tokens are typically valid for 3600 seconds (1 hour); cache for 55 minutes
+      tokenCache.set(cacheKey, {
+        token,
+        expiresAt: Date.now() + 55 * 60 * 1000,
+      });
+    }
+
+    return token;
   } catch (err) {
     console.warn("Google token exchange error:", err);
     return null;

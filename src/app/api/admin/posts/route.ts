@@ -41,6 +41,9 @@ function resolveStorageSrc(src: string): string {
 
   // Raw storage path (e.g. "posts/deck-4.jpg")
   if (!src.startsWith("http://") && !src.startsWith("https://") && !src.startsWith("data:")) {
+    if (src.startsWith("/images/") || src.startsWith("images/")) {
+      return src.startsWith("/") ? src : `/${src}`;
+    }
     const clean = src.startsWith("/") ? src.slice(1) : src;
     if (clean.startsWith("posts/")) {
       return `/api/images/${clean}`;

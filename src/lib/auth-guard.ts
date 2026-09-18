@@ -26,7 +26,7 @@ export async function verifyAdminSession(): Promise<{ email: string; uid: string
   }
   const email = (decoded.email ?? "").toLowerCase();
 
-  if (email !== ALLOWED_ADMIN_EMAIL.toLowerCase()) {
+  if (email !== ALLOWED_ADMIN_EMAIL.toLowerCase() || !decoded.email_verified) {
     throw new Error("Unauthorized");
   }
 

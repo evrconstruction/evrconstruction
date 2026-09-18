@@ -113,8 +113,26 @@ function getStore(): AgentStore {
   return globalAgentStore.__EVR_SEO_AGENT_STORE__;
 }
 
+async function getPersistedConfig(): Promise<AgentConfig> {
+  const store = getStore();
+  try {
+    const doc = await adminDb.collection("agent-config").doc("seo-agent").get();
+    if (doc.exists) {
+      const data = doc.data() as Partial<AgentConfig>;
+      store.config = {
+        ...store.config,
+        ...data,
+      };
+    }
+  } catch (err) {
+    console.warn("Could not read agent-config from Firestore:", err);
+  }
+  return store.config;
+}
+
 export async function getSeoAgentDashboardData(): Promise<SeoAgentDashboardData> {
   const store = getStore();
+  const config = await getPersistedConfig();
 
   // 1. Fetch real counts from Firestore
   let activeBacklinks = 0;
@@ -153,7 +171,7 @@ export async function getSeoAgentDashboardData(): Promise<SeoAgentDashboardData>
 
   return {
     healthScore,
-    config: store.config,
+    config,
     skills: store.skills,
     directives: store.directives,
     recentRuns: store.recentRuns,
@@ -167,15 +185,34 @@ export async function getSeoAgentDashboardData(): Promise<SeoAgentDashboardData>
 }
 
 export async function toggleAutonomousEngine(active?: boolean): Promise<AgentConfig> {
-  const store = getStore();
-  store.config.autonomousActive = active !== undefined ? active : !store.config.autonomousActive;
-  return store.config;
+  const currentConfig = await getPersistedConfig();
+  const nextActive = active !== undefined ? active : !currentConfig.autonomousActive;
+  currentConfig.autonomousActive = nextActive;
+
+  try {
+    await adminDb.collection("agent-config").doc("seo-agent").set(
+      {
+        autonomousActive: nextActive,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.error("Failed to persist agent-config to Firestore:", err);
+  }
+
+  return currentConfig;
 }
 
 export const toggleAutonomousAgent = toggleAutonomousEngine;
 
 export async function runSkill(skillId: string): Promise<{ success: boolean; log: AgentRunLog; directives: AgentDirective[] }> {
   const store = getStore();
+  const config = await getPersistedConfig();
+
+  if (!config.autonomousActive) {
+    throw new Error("Cannot run skill while autonomous engine is paused (Kill Switch active).");
+  }
 
   if (store.isRunningLock) {
     throw new Error("Agent is currently executing a task. Please wait for the current run to finish.");

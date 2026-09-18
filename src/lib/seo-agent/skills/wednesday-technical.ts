@@ -9,6 +9,9 @@ const CRITICAL_ROUTES = [
   { path: "/projects/decks", name: "Decks Service Page" },
   { path: "/projects/gazebo", name: "Gazebos Service Page" },
   { path: "/projects/restoration", name: "Restoration Service Page" },
+  { path: "/projects/remodeling", name: "Remodeling Service Page" },
+  { path: "/projects/carpentry", name: "Carpentry Service Page" },
+  { path: "/projects/patios-pergolas", name: "Patios & Pergolas Service Page" },
   { path: "/robots.txt", name: "Robots Configuration" },
   { path: "/sitemap.xml", name: "XML Sitemap" },
 ];
@@ -20,13 +23,15 @@ export async function runWednesdayTechnicalSkill(): Promise<SkillResult> {
 
   let passedCount = 0;
   let failedCount = 0;
+  let robotsHasSitemap = false;
   const baseUrl = "https://evrconstructions.com";
 
   for (const route of CRITICAL_ROUTES) {
     const url = `${baseUrl}${route.path}`;
+    const isRobots = route.path === "/robots.txt";
     try {
       const res = await fetch(url, {
-        method: "HEAD",
+        method: isRobots ? "GET" : "HEAD",
         headers: {
           "User-Agent": "EVR-SEO-Audit-Agent/1.0 (+https://evrconstructions.com)",
         },
@@ -35,6 +40,12 @@ export async function runWednesdayTechnicalSkill(): Promise<SkillResult> {
 
       if (res.status === 200) {
         passedCount++;
+        if (isRobots) {
+          const bodyText = await res.text();
+          if (bodyText.toLowerCase().includes("sitemap:")) {
+            robotsHasSitemap = true;
+          }
+        }
       } else {
         failedCount++;
         findings.push(`${route.name} (${route.path}) returned HTTP ${res.status}.`);
@@ -74,7 +85,11 @@ export async function runWednesdayTechnicalSkill(): Promise<SkillResult> {
 
   if (failedCount === 0) {
     findings.push(`Crawl Audit Passed: All ${passedCount} critical public routes and sitemaps returned HTTP 200 OK.`);
-    findings.push("robots.txt is active and allows Googlebot indexing with sitemap pointer.");
+    if (robotsHasSitemap) {
+      findings.push("robots.txt is active and allows Googlebot indexing with verified sitemap pointer.");
+    } else {
+      findings.push("robots.txt is active with HTTP 200 OK.");
+    }
     findings.push("LocalBusiness schema contains verified NAP and exact East TN GeoCoordinates.");
   } else {
     findings.push(`Crawl Audit Warning: ${failedCount} of ${CRITICAL_ROUTES.length} routes encountered issues.`);

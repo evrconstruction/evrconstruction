@@ -21,8 +21,8 @@ export async function POST(request: Request) {
     }
 
     const email = (decoded.email ?? "").toLowerCase();
-    if (email !== ALLOWED_ADMIN_EMAIL.toLowerCase()) {
-      return NextResponse.json({ error: "Unauthorized user email" }, { status: 403 });
+    if (email !== ALLOWED_ADMIN_EMAIL.toLowerCase() || !decoded.email_verified) {
+      return NextResponse.json({ error: "Unauthorized: Administrator email must be verified" }, { status: 403 });
     }
 
     let sessionCookie: string;

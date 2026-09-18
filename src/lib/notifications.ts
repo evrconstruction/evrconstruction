@@ -42,8 +42,9 @@ export async function getUnreadCount(): Promise<number> {
     const snap = await adminDb
       .collection(NOTIFICATIONS_COLLECTION)
       .where("read", "==", false)
+      .count()
       .get();
-    return snap.size;
+    return snap.data().count;
   } catch (err) {
     console.error("Failed to get unread count from Firestore:", err);
     return 0;
