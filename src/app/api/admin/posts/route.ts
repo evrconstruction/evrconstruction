@@ -5,9 +5,6 @@ import { verifyAdminSession } from "@/lib/auth-guard";
 
 const POSTS_COLLECTION = "posts";
 
-export const dynamic = "force-dynamic";
-export const maxDuration = 60;
-
 /**
  * Converts a Firestore `src` value into a URL the browser can load.
  *
@@ -62,11 +59,8 @@ function resolveStorageSrc(src: string): string {
 export async function GET() {
   try {
     await verifyAdminSession();
-  } catch (authErr) {
-    return NextResponse.json(
-      { error: authErr instanceof Error ? authErr.message : "Unauthorized" },
-      { status: 401 }
-    );
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -110,11 +104,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     await verifyAdminSession();
-  } catch (authErr) {
-    return NextResponse.json(
-      { error: authErr instanceof Error ? authErr.message : "Unauthorized" },
-      { status: 401 }
-    );
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -201,11 +192,8 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   try {
     await verifyAdminSession();
-  } catch (authErr) {
-    return NextResponse.json(
-      { error: authErr instanceof Error ? authErr.message : "Unauthorized" },
-      { status: 401 }
-    );
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
