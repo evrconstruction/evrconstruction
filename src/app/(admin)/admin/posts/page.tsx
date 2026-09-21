@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import type { ProjectPost } from "@/lib/posts-store";
 import { generatePostGeoEnhancements } from "@/lib/geo-enhancements";
+import { useAuth } from "@/lib/firebase/auth-context";
 
 const CATEGORIES = ["Decks", "Gazebos", "Restoration", "Remodeling", "Carpentry", "Patios"] as const;
 
@@ -13,6 +14,7 @@ function resolveImageSrc(src: string | undefined): string {
 }
 
 export default function PostsManagerPage() {
+  const { user } = useAuth();
   const [posts, setPosts] = useState<ProjectPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -23,6 +25,8 @@ export default function PostsManagerPage() {
   const [caption, setCaption] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [suggestionIndex, setSuggestionIndex] = useState(0);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [autoDetectFeedback, setAutoDetectFeedback] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const SEO_SUGGESTIONS: Record<typeof CATEGORIES[number], string[]> = {
@@ -121,9 +125,49 @@ export default function PostsManagerPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 20 * 1024 * 1024) {
+      setPublishError("Image must be under 20MB");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
-      setImagePreview(event.target?.result as string);
+      const rawDataUrl = event.target?.result as string;
+      const img = new window.Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          const MAX_DIM = 1920;
+          let { width, height } = img;
+
+          if (width > MAX_DIM || height > MAX_DIM) {
+            if (width > height) {
+              height = Math.round((height * MAX_DIM) / width);
+              width = MAX_DIM;
+            } else {
+              width = Math.round((width * MAX_DIM) / height);
+              height = MAX_DIM;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL("image/jpeg", 0.85);
+            setImagePreview(compressed);
+          } else {
+            setImagePreview(rawDataUrl);
+          }
+        } catch {
+          setImagePreview(rawDataUrl);
+        }
+      };
+      img.onerror = () => {
+        setImagePreview(rawDataUrl);
+      };
+      img.src = rawDataUrl;
     };
     reader.readAsDataURL(file);
   }
@@ -133,7 +177,22 @@ export default function PostsManagerPage() {
     if (!imagePreview || !caption.trim() || uploading) return;
 
     setUploading(true);
+    setPublishError(null);
     try {
+      // Ensure session cookie is fresh to prevent 1-hour token expiration
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          await fetch("/api/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
+          });
+        } catch (syncErr) {
+          console.warn("Session refresh warning:", syncErr);
+        }
+      }
+
       const res = await fetch("/api/admin/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -150,10 +209,16 @@ export default function PostsManagerPage() {
         setPosts([data.post, ...posts]);
         setCaption("");
         setImagePreview(null);
+        setPublishError(null);
+        setAutoDetectFeedback(null);
         setShowUploadModal(false);
+      } else {
+        const data = await res.json().catch(() => ({ error: "Server returned error" }));
+        setPublishError(data.error || `Publish failed (${res.status})`);
       }
     } catch (err) {
       console.error("Failed to publish post:", err);
+      setPublishError(err instanceof Error ? err.message : "Network error — check your connection.");
     } finally {
       setUploading(false);
     }
@@ -375,6 +440,8 @@ export default function PostsManagerPage() {
                         ) {
                           setSelectedCategory(enhanced.serviceCategory as (typeof CATEGORIES)[number]);
                         }
+                        setAutoDetectFeedback(`✓ Category: ${enhanced.serviceCategory} • Area: ${enhanced.locationTag}`);
+                        setTimeout(() => setAutoDetectFeedback(null), 4000);
                       }}
                       className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0284c7] hover:underline cursor-pointer"
                     >
@@ -382,6 +449,18 @@ export default function PostsManagerPage() {
                     </button>
                   )}
                 </div>
+                {autoDetectFeedback && (
+                  <div className="mb-2 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg flex items-center justify-between">
+                    <span>{autoDetectFeedback}</span>
+                    <button
+                      type="button"
+                      onClick={() => setAutoDetectFeedback(null)}
+                      className="text-emerald-600 hover:text-emerald-900 text-xs ml-2 cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
                 <textarea
                   required
                   rows={3}
@@ -391,6 +470,13 @@ export default function PostsManagerPage() {
                   className="w-full rounded-lg border border-slate-200 p-2.5 text-xs text-slate-900 focus:border-[#f4b400] focus:outline-hidden leading-relaxed"
                 />
               </div>
+
+              {/* Publish Error Message */}
+              {publishError && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
+                  ⚠ {publishError}
+                </div>
+              )}
 
               {/* Actions Footer */}
               <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-100">
@@ -425,6 +511,8 @@ export default function PostsManagerPage() {
                       setShowUploadModal(false);
                       setImagePreview(null);
                       setCaption("");
+                      setPublishError(null);
+                      setAutoDetectFeedback(null);
                     }}
                     className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
                   >
