@@ -23,8 +23,6 @@ export default function PostsManagerPage() {
   const [caption, setCaption] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [suggestionIndex, setSuggestionIndex] = useState(0);
-  const [publishError, setPublishError] = useState<string | null>(null);
-  const [autoDetectFeedback, setAutoDetectFeedback] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const SEO_SUGGESTIONS: Record<typeof CATEGORIES[number], string[]> = {
@@ -135,7 +133,6 @@ export default function PostsManagerPage() {
     if (!imagePreview || !caption.trim() || uploading) return;
 
     setUploading(true);
-    setPublishError(null);
     try {
       const res = await fetch("/api/admin/posts", {
         method: "POST",
@@ -153,15 +150,10 @@ export default function PostsManagerPage() {
         setPosts([data.post, ...posts]);
         setCaption("");
         setImagePreview(null);
-        setPublishError(null);
         setShowUploadModal(false);
-      } else {
-        const data = await res.json().catch(() => ({ error: "Unknown error" }));
-        setPublishError(data.error || `Server error (${res.status})`);
       }
     } catch (err) {
       console.error("Failed to publish post:", err);
-      setPublishError(err instanceof Error ? err.message : "Network error — check your connection.");
     } finally {
       setUploading(false);
     }
@@ -383,8 +375,6 @@ export default function PostsManagerPage() {
                         ) {
                           setSelectedCategory(enhanced.serviceCategory as (typeof CATEGORIES)[number]);
                         }
-                        setAutoDetectFeedback(`✓ Category detected: ${enhanced.serviceCategory} • Area: ${enhanced.locationTag}`);
-                        setTimeout(() => setAutoDetectFeedback(null), 5000);
                       }}
                       className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0284c7] hover:underline cursor-pointer"
                     >
@@ -392,18 +382,6 @@ export default function PostsManagerPage() {
                     </button>
                   )}
                 </div>
-                {autoDetectFeedback && (
-                  <div className="mb-2 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg flex items-center justify-between">
-                    <span>{autoDetectFeedback}</span>
-                    <button
-                      type="button"
-                      onClick={() => setAutoDetectFeedback(null)}
-                      className="text-emerald-600 hover:text-emerald-900 text-xs ml-2"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
                 <textarea
                   required
                   rows={3}
@@ -413,13 +391,6 @@ export default function PostsManagerPage() {
                   className="w-full rounded-lg border border-slate-200 p-2.5 text-xs text-slate-900 focus:border-[#f4b400] focus:outline-hidden leading-relaxed"
                 />
               </div>
-
-              {/* Publish Error Message */}
-              {publishError && (
-                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
-                  ⚠ {publishError}
-                </div>
-              )}
 
               {/* Actions Footer */}
               <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-100">
