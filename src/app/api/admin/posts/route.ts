@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { adminDb, adminStorage } from "@/lib/firebase-admin";
 import { ProjectPost } from "@/lib/posts-store";
 import { verifyAdminSession } from "@/lib/auth-guard";
+import { SERVICES } from "@/lib/services";
 
 const POSTS_COLLECTION = "posts";
 
@@ -181,6 +183,20 @@ export async function POST(request: Request) {
       src: resolveStorageSrc(newPostData.src),
     };
 
+    // Revalidate public project pages immediately so new posts appear live
+    try {
+      revalidatePath("/projects");
+      revalidatePath("/projects/[slug]", "page");
+      if (category) {
+        const matched = SERVICES.find((s) => s.category === category);
+        if (matched) {
+          revalidatePath(`/projects/${matched.slug}`);
+        }
+      }
+    } catch (revalErr) {
+      console.warn("revalidatePath error on post creation:", revalErr);
+    }
+
     return NextResponse.json({ status: "ok", post: savedPost });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Failed to create post.";
@@ -235,6 +251,14 @@ export async function DELETE(request: Request) {
           }
         }
         await docRef.delete();
+      }
+
+      // Revalidate public project pages immediately
+      try {
+        revalidatePath("/projects");
+        revalidatePath("/projects/[slug]", "page");
+      } catch (revalErr) {
+        console.warn("revalidatePath error on post deletion:", revalErr);
       }
     } catch (firestoreErr) {
       console.error("Firestore delete failed for ID:", id, firestoreErr);

@@ -6,7 +6,8 @@ import { SERVICES, type ServiceSlug } from "@/lib/services";
 import { Gallery } from "@/components/site/Gallery";
 import { adminDb } from "@/lib/firebase-admin";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function resolveStorageSrc(src: string): string {
   if (!src) return "/images/hero.jpg";
@@ -88,7 +89,7 @@ export default async function ServiceProjectsPage({ params }: ServicePageProps) 
     notFound();
   }
 
-  let dynamicGalleryItems: Array<{ src: string; alt: string; caption: string }> = [];
+  let dynamicGalleryItems: Array<{ src: string; alt: string; caption: string; createdAt?: string }> = [];
   try {
     const postsSnap = await adminDb
       .collection("posts")
@@ -102,13 +103,18 @@ export default async function ServiceProjectsPage({ params }: ServicePageProps) 
         src: resolveStorageSrc(d.src || ""),
         alt: d.alt || d.caption || `${service.title} project by EVR Construction`,
         caption: d.caption || `${service.title} construction by EVR Construction LLC`,
+        createdAt: (d.createdAt as string) || "",
       };
     });
+
+    // Newest posts first
+    dynamicGalleryItems.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
   } catch (dbErr) {
     console.warn("Failed to fetch published posts for gallery:", dbErr);
   }
 
-  const allGalleryItems = [...dynamicGalleryItems, ...service.gallery];
+  // Use real Firestore posts. Fallback to service.gallery only if Firestore is empty.
+  const allGalleryItems = dynamicGalleryItems.length > 0 ? dynamicGalleryItems : service.gallery;
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
