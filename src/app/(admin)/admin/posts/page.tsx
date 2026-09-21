@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import type { ProjectPost } from "@/lib/posts-store";
 import { generatePostGeoEnhancements } from "@/lib/geo-enhancements";
+import { useAuth } from "@/lib/firebase/auth-context";
 
 const CATEGORIES = ["Decks", "Gazebos", "Restoration", "Remodeling", "Carpentry", "Patios"] as const;
 
@@ -119,13 +120,55 @@ export default function PostsManagerPage() {
     };
   }, []);
 
+  const { user } = useAuth();
+
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 20 * 1024 * 1024) {
+      setPublishError("Image must be under 20MB");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
-      setImagePreview(event.target?.result as string);
+      const rawDataUrl = event.target?.result as string;
+      const img = new window.Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          const MAX_DIM = 1920;
+          let { width, height } = img;
+
+          if (width > MAX_DIM || height > MAX_DIM) {
+            if (width > height) {
+              height = Math.round((height * MAX_DIM) / width);
+              width = MAX_DIM;
+            } else {
+              width = Math.round((width * MAX_DIM) / height);
+              height = MAX_DIM;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL("image/jpeg", 0.85);
+            setImagePreview(compressed);
+          } else {
+            setImagePreview(rawDataUrl);
+          }
+        } catch {
+          setImagePreview(rawDataUrl);
+        }
+      };
+      img.onerror = () => {
+        setImagePreview(rawDataUrl);
+      };
+      img.src = rawDataUrl;
     };
     reader.readAsDataURL(file);
   }
@@ -137,9 +180,15 @@ export default function PostsManagerPage() {
     setUploading(true);
     setPublishError(null);
     try {
+      const token = await user?.getIdToken().catch(() => null);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch("/api/admin/posts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           category: selectedCategory,
           src: imagePreview,
@@ -156,7 +205,7 @@ export default function PostsManagerPage() {
         setPublishError(null);
         setShowUploadModal(false);
       } else {
-        const data = await res.json().catch(() => ({ error: "Unknown error" }));
+        const data = await res.json().catch(() => ({ error: "Unknown server error" }));
         setPublishError(data.error || `Server error (${res.status})`);
       }
     } catch (err) {
@@ -169,7 +218,12 @@ export default function PostsManagerPage() {
 
   async function handleDeletePost(id: string) {
     try {
-      const res = await fetch(`/api/admin/posts?id=${id}`, { method: "DELETE" });
+      const token = await user?.getIdToken().catch(() => null);
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const res = await fetch(`/api/admin/posts?id=${id}`, { method: "DELETE", headers });
       if (res.ok) {
         setPosts(posts.filter((p) => p.id !== id));
       }
