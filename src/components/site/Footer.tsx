@@ -23,9 +23,9 @@ export function Footer() {
         </div>
 
         <nav aria-label="Footer navigation">
-          <h2 className="font-heading text-sm font-semibold uppercase tracking-wider text-amber-brand">
+          <p className="font-heading text-sm font-semibold uppercase tracking-wider text-amber-brand">
             Explore
-          </h2>
+          </p>
           <ul className="mt-4 flex flex-col items-center gap-2.5 md:items-start">
             {NAV_LINKS.map((link) => (
               <li key={link.href}>
@@ -50,9 +50,9 @@ export function Footer() {
         </nav>
 
         <nav aria-label="Project types">
-          <h2 className="font-heading text-sm font-semibold uppercase tracking-wider text-amber-brand">
+          <p className="font-heading text-sm font-semibold uppercase tracking-wider text-amber-brand">
             Projects
-          </h2>
+          </p>
           <ul className="mt-4 flex flex-col items-center gap-2.5 md:items-start">
             {SERVICES.map((service) => (
               <li key={service.slug}>
@@ -68,9 +68,9 @@ export function Footer() {
         </nav>
 
         <div>
-          <h2 className="font-heading text-sm font-semibold uppercase tracking-wider text-amber-brand">
+          <p className="font-heading text-sm font-semibold uppercase tracking-wider text-amber-brand">
             Get in touch
-          </h2>
+          </p>
           <ul className="mt-4 flex flex-col items-center gap-2.5 md:items-start">
             <li className="flex items-center gap-2.5">
               <MapPinIcon />

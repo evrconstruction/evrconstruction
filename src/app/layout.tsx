@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Rubik, Open_Sans } from "next/font/google";
-import Script from "next/script";
+import { HOME_TITLE, HOME_META_DESCRIPTION } from "@/lib/site";
 import "./globals.css";
 
 const rubik = Rubik({
@@ -52,12 +52,10 @@ export const metadata: Metadata = {
     },
   },
   title: {
-    default:
-      "EVR Construction LLC | Decks, Gazebos & Carpentry in Knoxville, TN",
+    default: `${HOME_TITLE} | EVR Construction LLC`,
     template: "%s | EVR Construction LLC",
   },
-  description:
-    "Licensed & insured deck, gazebo, railing and carpentry contractor serving Knoxville, Farragut, Hardin Valley and East Tennessee. Free estimates.",
+  description: HOME_META_DESCRIPTION,
   openGraph: {
     type: "website",
     siteName: "EVR Construction LLC",
@@ -95,18 +93,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
       </head>
       <body className="min-h-full flex flex-col bg-white font-body text-charcoal">
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-19DRNQBM8T"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-19DRNQBM8T');
-          `}
-        </Script>
         {children}
       </body>
     </html>

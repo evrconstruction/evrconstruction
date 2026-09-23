@@ -9,17 +9,17 @@ describe("generatePostGeoEnhancements", () => {
     expect(result1.serviceCategory).toBe("Gazebos");
     expect(POSTS_CATEGORIES).toContain(result1.serviceCategory);
 
-    const result2 = generatePostGeoEnhancements("Cedar Gazebo", "Built in Farragut");
+    const result2 = generatePostGeoEnhancements("Cedar Gazebo", "Built in Maryville");
     expect(result2.serviceCategory).toBe("Gazebos");
     expect(POSTS_CATEGORIES).toContain(result2.serviceCategory);
   });
 
   it("detects Carpentry from corbel, trim, and carpentry keywords", () => {
-    const caption = "Architectural interior trim, custom corbels, and detailed finish carpentry in Hardin Valley, TN.";
+    const caption = "Architectural interior trim, custom corbels, and detailed finish carpentry in Oak Ridge, TN.";
     const result = generatePostGeoEnhancements("", caption);
     expect(result.serviceCategory).toBe("Carpentry");
     expect(POSTS_CATEGORIES).toContain(result.serviceCategory);
-    expect(result.locationTag).toBe("Hardin Valley, TN");
+    expect(result.locationTag).toBe("Oak Ridge, TN");
   });
 
   it("detects Restoration from stain and repair keywords", () => {
@@ -42,14 +42,15 @@ describe("generatePostGeoEnhancements", () => {
     expect(POSTS_CATEGORIES).toContain(result.serviceCategory);
   });
 
-  it("detects Loudon TN and Lenoir City TN from caption keywords", () => {
-    const resultLoudon = generatePostGeoEnhancements("", "Covered cedar deck built on lakefront property in Loudon TN");
-    expect(resultLoudon.serviceCategory).toBe("Decks");
-    expect(resultLoudon.locationTag).toBe("Loudon, TN");
-
+  it("matches multi-word service areas and ignores locations outside the published list", () => {
     const resultLenoir = generatePostGeoEnhancements("", "Custom timber pergola installation in Lenoir City");
     expect(resultLenoir.serviceCategory).toBe("Gazebos");
     expect(resultLenoir.locationTag).toBe("Lenoir City, TN");
+
+    // Loudon is not in SITE.serviceAreas, so generated alt text must not
+    // advertise it. It falls back to the default area instead.
+    const resultOutsideList = generatePostGeoEnhancements("", "Covered cedar deck built on lakefront property in Loudon TN");
+    expect(resultOutsideList.locationTag).toBe("Knoxville, TN");
   });
 
   it("defaults to Decks and Knoxville, TN when no specific keyword is found", () => {

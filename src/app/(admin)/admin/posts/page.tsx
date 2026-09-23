@@ -31,12 +31,12 @@ export default function PostsManagerPage() {
 
   const SEO_SUGGESTIONS: Record<typeof CATEGORIES[number], string[]> = {
     Decks: [
-      "Custom multi-tier composite deck with black aluminum railings completed in Hardin Valley, Knoxville TN by EVR Construction LLC.",
-      "Low-maintenance composite deck installation with integrated stair lighting in Farragut, TN.",
+      "Custom multi-tier composite deck with black aluminum railings completed in Knoxville, TN by EVR Construction LLC.",
+      "Low-maintenance composite deck installation with integrated stair lighting in Maryville, TN.",
       "Custom pressure-treated wood deck extension with built-in bench seating in West Knoxville, TN.",
     ],
     Gazebos: [
-      "Custom shaded cedar gazebo with architectural shingles and finished ceiling built in Farragut, TN by EVR Construction.",
+      "Custom shaded cedar gazebo with architectural shingles and finished ceiling built in Sevierville, TN by EVR Construction.",
       "Heavy timber outdoor pavilion with tongue-and-groove woodwork in Maryville, TN.",
       "Custom backyard pergola with heavy cedar posts and decorative rafters in Knoxville, TN.",
     ],
@@ -47,12 +47,12 @@ export default function PostsManagerPage() {
     ],
     Remodeling: [
       "Custom residential home remodeling and exterior carpentry expansion completed in West Knoxville, TN.",
-      "Screened-in porch and outdoor living room remodel in Hardin Valley, TN.",
+      "Screened-in porch and outdoor living room remodel in Powell, TN.",
       "Exterior home renovation with custom cedar accents and finished woodwork in Knoxville, TN.",
     ],
     Carpentry: [
       "Custom structural framing, load-bearing header installation, and precision woodwork in Knoxville, TN.",
-      "Architectural exterior trim, custom corbels, and detailed finish carpentry in Farragut, TN.",
+      "Architectural exterior trim, custom corbels, and detailed finish carpentry in Oak Ridge, TN.",
       "Licensed residential framing and heavy timber carpentry completed in Maryville, TN.",
     ],
     Patios: [
@@ -466,7 +466,7 @@ export default function PostsManagerPage() {
                   rows={3}
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
-                  placeholder="e.g. Raised composite deck with black aluminum railings completed in Hardin Valley, TN."
+                  placeholder="e.g. Raised composite deck with black aluminum railings completed in Maryville, TN."
                   className="w-full rounded-lg border border-slate-200 p-2.5 text-xs text-slate-900 focus:border-[#f4b400] focus:outline-hidden leading-relaxed"
                 />
               </div>

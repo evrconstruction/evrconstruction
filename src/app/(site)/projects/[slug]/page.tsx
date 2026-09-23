@@ -22,7 +22,9 @@ function resolveStorageSrc(src: string): string {
           return `/api/images/${storagePath}`;
         }
       }
-    } catch {}
+    } catch {
+      // Malformed URL — fall through to path-based resolution below.
+    }
   }
   if (!src.startsWith("http://") && !src.startsWith("https://") && !src.startsWith("data:")) {
     if (src.startsWith("/images/") || src.startsWith("images/")) {

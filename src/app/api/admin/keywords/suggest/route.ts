@@ -1,16 +1,9 @@
 import { NextResponse } from "next/server";
 import { verifyAdminSession } from "@/lib/auth-guard";
+import { SERVICE_AREA_TAGS } from "@/lib/site";
 
-const EAST_TN_LOCATIONS = [
-  "Knoxville, TN",
-  "Farragut, TN",
-  "Hardin Valley, TN",
-  "Maryville, TN",
-  "Oak Ridge, TN",
-  "Lenoir City, TN",
-  "Powell, TN",
-  "Bearden, TN",
-];
+/** Keyword prospecting locations — always the published service areas. */
+const EAST_TN_LOCATIONS = SERVICE_AREA_TAGS;
 
 const LOCAL_KEYWORD_TEMPLATES = [
   { template: "custom deck builder {city}", category: "Decks" },

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { KeywordItem } from "@/app/api/admin/keywords/route";
+import { SERVICE_AREA_TAGS } from "@/lib/site";
 
 interface KeywordsResponse {
   stats: {
@@ -489,12 +490,11 @@ export default function KeywordsPage() {
                     onChange={(e) => setSelectedLocation(e.target.value)}
                     className="w-full rounded-lg border border-slate-200 p-2.5 text-xs text-slate-900 focus:border-[#f4b400] focus:outline-hidden"
                   >
-                    <option value="Knoxville, TN">Knoxville, TN</option>
-                    <option value="Farragut, TN">Farragut, TN</option>
-                    <option value="Hardin Valley, TN">Hardin Valley, TN</option>
-                    <option value="Maryville, TN">Maryville, TN</option>
-                    <option value="Oak Ridge, TN">Oak Ridge, TN</option>
-                    <option value="Lenoir City, TN">Lenoir City, TN</option>
+                    {SERVICE_AREA_TAGS.map((area) => (
+                      <option key={area} value={area}>
+                        {area}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

@@ -247,7 +247,10 @@ export async function DELETE(request: Request) {
 
           // Security: strict prefix enforcement and path traversal prevention
           if (fileName && fileName.startsWith("posts/") && !fileName.includes("..")) {
-            await bucket.file(fileName).delete().catch(() => {});
+            await bucket
+              .file(fileName)
+              .delete()
+              .catch((err) => console.warn(`Failed to delete storage file ${fileName}:`, err));
           }
         }
         await docRef.delete();

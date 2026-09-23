@@ -30,3 +30,24 @@ export const NAV_LINKS = [
   { label: "Projects", href: "/projects" },
   { label: "Contact", href: "/contact" },
 ] as const;
+
+/**
+ * Service areas written as "City, TN" for keyword targeting and post tagging.
+ * Derived from SITE.serviceAreas so there is a single list to maintain.
+ */
+export const SERVICE_AREA_TAGS: readonly string[] = SITE.serviceAreas.map(
+  (city) => `${city}, TN`
+);
+
+/**
+ * Homepage title WITHOUT the brand — `src/app/layout.tsx` appends
+ * "| EVR Construction LLC" via its title template.
+ */
+export const HOME_TITLE = "Decks, Gazebos & Carpentry in Knoxville, TN";
+
+/**
+ * Homepage / site-wide meta description. Names only cities that appear in
+ * SITE.serviceAreas so on-page copy never contradicts the service-area list.
+ */
+export const HOME_META_DESCRIPTION =
+  "Licensed & insured deck, gazebo, railing and carpentry contractor serving Knoxville, Maryville, Oak Ridge and East Tennessee. Free estimates.";

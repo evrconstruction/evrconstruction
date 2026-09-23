@@ -46,7 +46,9 @@ export async function POST() {
               type: "NoFollow" as const,
               lastVerified: new Date().toLocaleDateString("en-US"),
             };
-            await doc.ref.update(fallbackPayload).catch(() => {});
+            await doc.ref
+              .update(fallbackPayload)
+              .catch((err) => console.warn(`Failed to persist fallback status for ${doc.id}:`, err));
             return {
               id: doc.id,
               sourceUrl: data.sourceUrl,

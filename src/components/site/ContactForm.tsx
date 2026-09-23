@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 type FormStatus = "idle" | "submitting" | "success" | "error";
 
@@ -47,6 +48,12 @@ export function ContactForm() {
       });
 
       if (response.ok) {
+        // Primary conversion for this site — no PII is sent, only the source.
+        trackEvent("generate_lead", {
+          form_id: "contact_form",
+          lead_source: "website_contact_form",
+          page_location: "/contact",
+        });
         setStatus("success");
         setForm(initialForm);
       } else {

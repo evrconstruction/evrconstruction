@@ -53,8 +53,6 @@ export interface SeoAgentDashboardData {
   stats: {
     trackedKeywords: number;
     activeBacklinks: number;
-    page2Opportunities: number;
-    geoCoverageScore: number;
   };
   skills: AgentSkill[];
   directives: AgentDirective[];

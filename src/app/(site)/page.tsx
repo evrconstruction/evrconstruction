@@ -1,21 +1,20 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { SITE } from "@/lib/site";
+import { SITE, HOME_TITLE, HOME_META_DESCRIPTION } from "@/lib/site";
 import { ServicesSection } from "@/components/site/ServicesSection";
 import { NoJobTooBigSection } from "@/components/site/NoJobTooBigSection";
 
 export const metadata: Metadata = {
-  title: "EVR Construction LLC | Decks, Gazebos & Carpentry in Knoxville, TN",
-  description:
-    "Licensed & insured deck, gazebo, railing and carpentry contractor serving Knoxville, Farragut, Hardin Valley and East Tennessee. Free estimates.",
+  title: HOME_TITLE,
+  description: HOME_META_DESCRIPTION,
   alternates: {
     canonical: "https://evrconstructions.com",
   },
   openGraph: {
-    title: "EVR Construction LLC | Decks, Gazebos & Carpentry in Knoxville, TN",
-    description:
-      "Licensed & insured deck, gazebo, railing and carpentry contractor serving Knoxville, Farragut, Hardin Valley and East Tennessee. Free estimates.",
+    // Open Graph titles are not templated, so the brand belongs here.
+    title: `${HOME_TITLE} | EVR Construction LLC`,
+    description: HOME_META_DESCRIPTION,
     url: "https://evrconstructions.com",
     images: [{ url: "/images/hero.jpg", width: 1200, height: 1600, alt: "EVR Construction deck project" }],
   },

@@ -1,4 +1,5 @@
 import { adminDb } from "@/lib/firebase-admin";
+import { sendEmail, escapeHtml } from "@/lib/email";
 
 export type NotificationType = "alert" | "warning" | "success" | "info";
 export type NotificationCategory = "seo_agent" | "keywords" | "backlinks" | "lead" | "system";
@@ -128,18 +129,26 @@ export async function addNotification(
   }
 }
 
+/**
+ * Email an admin alert. Returns whether the email was actually accepted by the
+ * provider, which is stored as `emailDispatched` on the notification.
+ */
 export async function dispatchAdminAlertEmail(notification: Omit<AdminNotification, "id">): Promise<boolean> {
-  try {
-    await adminDb.collection("mail").add({
-      to: ADMIN_EMAIL,
-      message: {
-        subject: `[EVR Alert] ${notification.title}`,
-        text: `${notification.message}\n\nView details: https://evrconstructions.com${notification.actionHref}\nTimestamp: ${notification.createdAt}`,
-      },
-    });
-    return true;
-  } catch (err) {
-    console.warn("Could not queue alert in mail collection:", err);
-    return false;
+  const result = await sendEmail({
+    to: ADMIN_EMAIL,
+    subject: `[EVR Alert] ${notification.title}`,
+    text: `${notification.message}\n\nView details: https://evrconstructions.com${notification.actionHref}\nTimestamp: ${notification.createdAt}`,
+    html: `
+      <h2>${escapeHtml(notification.title)}</h2>
+      <p>${escapeHtml(notification.message).replace(/\n/g, "<br/>")}</p>
+      <p><a href="https://evrconstructions.com${escapeHtml(notification.actionHref)}">View details</a></p>
+      <small>${escapeHtml(notification.createdAt)}</small>
+    `,
+  });
+
+  if (!result.success) {
+    console.warn("Admin alert email was not sent:", result.error);
   }
+
+  return result.success;
 }

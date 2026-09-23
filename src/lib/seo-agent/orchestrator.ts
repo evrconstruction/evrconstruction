@@ -14,6 +14,11 @@ import { runSaturdayPostEnhancerSkill } from "./skills/saturday-post-enhancer";
 import { runSundayDigestSkill } from "./skills/sunday-digest";
 import { addNotification } from "@/lib/notifications";
 import { adminDb } from "@/lib/firebase-admin";
+import { acquireLock, releaseLock } from "@/lib/rate-limit";
+
+const AGENT_LOCK_NAME = "seo-agent-run";
+/** Upper bound on a single skill run, so a crashed instance cannot wedge the lock. */
+const AGENT_LOCK_TTL_MS = 5 * 60 * 1000;
 
 // Clean Fresh Skills Configuration
 export const SKILLS_CONFIG: AgentSkill[] = [
@@ -87,7 +92,6 @@ interface AgentStore {
   skills: AgentSkill[];
   directives: AgentDirective[];
   recentRuns: AgentRunLog[];
-  isRunningLock: boolean;
 }
 
 const globalAgentStore = global as unknown as { __EVR_SEO_AGENT_STORE__?: AgentStore };
@@ -107,7 +111,6 @@ function getStore(): AgentStore {
       skills: [...SKILLS_CONFIG],
       directives: [],
       recentRuns: [],
-      isRunningLock: false,
     };
   }
   return globalAgentStore.__EVR_SEO_AGENT_STORE__;
@@ -178,8 +181,6 @@ export async function getSeoAgentDashboardData(): Promise<SeoAgentDashboardData>
     stats: {
       activeBacklinks,
       trackedKeywords,
-      page2Opportunities: 0,
-      geoCoverageScore: 100,
     },
   };
 }
@@ -214,11 +215,13 @@ export async function runSkill(skillId: string): Promise<{ success: boolean; log
     throw new Error("Cannot run skill while autonomous engine is paused (Kill Switch active).");
   }
 
-  if (store.isRunningLock) {
+  // Cross-instance lock: a cron trigger and a manual admin click must not run the
+  // same skill concurrently on different Cloud Run instances.
+  const lockAcquired = await acquireLock(AGENT_LOCK_NAME, AGENT_LOCK_TTL_MS);
+  if (!lockAcquired) {
     throw new Error("Agent is currently executing a task. Please wait for the current run to finish.");
   }
 
-  store.isRunningLock = true;
   let log: AgentRunLog;
   let newDirectives: AgentDirective[] = [];
 
@@ -269,11 +272,18 @@ export async function runSkill(skillId: string): Promise<{ success: boolean; log
       const exists = store.directives.some((d) => d.title === directive.title);
       if (!exists) {
         store.directives.unshift(directive);
-        await adminDb.collection("seo_agent_directives").doc(directive.id).set(directive).catch(() => {});
+        await adminDb
+          .collection("seo_agent_directives")
+          .doc(directive.id)
+          .set(directive)
+          .catch((err) => console.warn(`Failed to persist directive ${directive.id}:`, err));
       }
     }
 
-    await adminDb.collection("seo_agent_runs").add(log).catch(() => {});
+    await adminDb
+      .collection("seo_agent_runs")
+      .add(log)
+      .catch((err) => console.warn("Failed to persist agent run log:", err));
 
     if (newDirectives.some((d) => d.priority === "High")) {
       await addNotification({
@@ -292,7 +302,7 @@ export async function runSkill(skillId: string): Promise<{ success: boolean; log
       directives: store.directives,
     };
   } finally {
-    store.isRunningLock = false;
+    await releaseLock(AGENT_LOCK_NAME);
   }
 }
 
@@ -339,7 +349,11 @@ export async function resolveDirective(directiveId: string, status: "Open" | "Re
   const index = store.directives.findIndex((d) => d.id === directiveId);
   if (index !== -1) {
     store.directives[index].status = status;
-    await adminDb.collection("seo_agent_directives").doc(directiveId).update({ status }).catch(() => {});
+    await adminDb
+      .collection("seo_agent_directives")
+      .doc(directiveId)
+      .update({ status })
+      .catch((err) => console.warn(`Failed to persist directive status for ${directiveId}:`, err));
   }
   return store.directives;
 }

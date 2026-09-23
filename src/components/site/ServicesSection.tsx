@@ -82,6 +82,9 @@ function ServiceIcon({ icon }: { icon: Service["icon"] }) {
 export function ServicesSection() {
   return (
     <section className="bg-white py-20">
+      {/* Visually hidden: gives the services grid a heading in the document
+          outline without altering the approved design. */}
+      <h2 className="sr-only">Our Services</h2>
       <div className="mx-auto grid max-w-7xl gap-x-12 gap-y-14 px-4 text-center sm:px-6 md:grid-cols-2 md:text-left lg:grid-cols-3 lg:px-8">
         {SERVICES.map((service) => (
           <article key={service.title} className="group mx-auto flex w-full max-w-sm flex-col items-center gap-4 md:mx-0 md:max-w-none md:items-start">

@@ -29,3 +29,9 @@ env:
     value: G-19DRNQBM8T
   - variable: CRON_SECRET
     secret: CRON_SECRET
+  - variable: RESEND_API_KEY
+    secret: RESEND_API_KEY
+  # Sandbox sender until evrconstructions.com is verified in Resend.
+  # Switch to "EVR Construction <contact@evrconstructions.com>" afterwards.
+  - variable: EMAIL_FROM
+    value: onboarding@resend.dev

@@ -18,6 +18,14 @@ vi.mock("@/lib/firebase-admin", () => ({
       })),
       get: vi.fn().mockResolvedValue({ empty: true, docs: [], size: 0 }),
     })),
+    // Used by the cross-instance agent lock (acquireLock / releaseLock).
+    runTransaction: vi.fn(async (callback: (tx: unknown) => unknown) =>
+      callback({
+        get: vi.fn().mockResolvedValue({ exists: false, data: () => undefined }),
+        set: vi.fn(),
+        update: vi.fn(),
+      })
+    ),
   },
 }));
 

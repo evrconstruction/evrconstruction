@@ -1,36 +1,37 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { addNotification } from "@/lib/notifications";
+import { consumeRateLimit } from "@/lib/rate-limit";
+import { sendEmail, escapeHtml } from "@/lib/email";
 
-// IP rate limiter: max 5 requests per 10 minutes per IP
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+/** Inbox that receives website lead notifications. */
+const LEAD_NOTIFICATION_EMAIL = "contact@evrconstructions.com";
+
+// Rate limit: max 5 requests per 10 minutes per caller, enforced in Firestore so
+// the budget is shared across every Cloud Run instance.
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQUESTS_PER_WINDOW = 5;
 
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-
-  if (!entry || now > entry.resetTime) {
-    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
-    return false;
-  }
-
-  if (entry.count >= MAX_REQUESTS_PER_WINDOW) {
-    return true;
-  }
-
-  entry.count += 1;
-  return false;
-}
-
 export async function POST(request: Request) {
   try {
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
-    if (isRateLimited(ip)) {
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
+
+    const { allowed, retryAfterSeconds } = await consumeRateLimit(
+      ip,
+      MAX_REQUESTS_PER_WINDOW,
+      RATE_LIMIT_WINDOW_MS
+    );
+
+    if (!allowed) {
       return NextResponse.json(
         { error: "Too many inquiries submitted from this connection. Please call us directly at (865) 221-7275." },
-        { status: 429 }
+        {
+          status: 429,
+          headers: { "Retry-After": String(retryAfterSeconds ?? 60) },
+        }
       );
     }
 
@@ -39,8 +40,8 @@ export async function POST(request: Request) {
 
     // Honeypot check for automated bot protection
     if (company_website) {
-      // Silently accept to trap bots without generating records or emails
-      return NextResponse.json({ success: true, message: "Inquiry successfully recorded and queued" });
+      // Silently accept to trap bots without sending email or creating records
+      return NextResponse.json({ success: true, message: "Inquiry successfully recorded" });
     }
 
     // Validation
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
       console.warn("Failed to write contact activity log:", err);
     });
 
-    // 3. Create Admin Notification (triggerEmail: false prevents duplicate alert email, as Step 4 sends the dedicated lead email)
+    // 3. Create Admin Notification (email is sent directly in step 4)
     try {
       await addNotification({
         type: "alert",
@@ -111,35 +112,35 @@ export async function POST(request: Request) {
       console.warn("Failed to create admin notification for lead:", notifErr);
     }
 
-    // 4. Queue email dispatch in Firestore 'mail' collection (Firebase Trigger Email extension)
-    try {
-      await adminDb.collection("mail").add({
-        to: "contact@evrconstructions.com",
-        replyTo: cleanEmail,
-        message: {
-          subject: `New Lead Inquiry from ${cleanFirst} ${cleanLast} (${cleanCity})`,
-          text: `Name: ${cleanFirst} ${cleanLast}\nCity: ${cleanCity}\nPhone: ${cleanPhone}\nEmail: ${cleanEmail}\n\nProject Details:\n${cleanMessage}\n\nSubmitted at: ${isoDate}`,
-          html: `
-            <h2>New Website Consultation Inquiry</h2>
-            <p><strong>Name:</strong> ${cleanFirst} ${cleanLast}</p>
-            <p><strong>City / Location:</strong> ${cleanCity}</p>
-            <p><strong>Phone:</strong> <a href="tel:${cleanPhone}">${cleanPhone}</a></p>
-            <p><strong>Email:</strong> <a href="mailto:${cleanEmail}">${cleanEmail}</a></p>
-            <hr />
-            <h3>Project Details:</h3>
-            <p>${cleanMessage.replace(/\n/g, "<br/>")}</p>
-            <small>Lead ID: ${leadRef.id} · Timestamp: ${isoDate}</small>
-          `,
-        },
-      });
-    } catch (mailErr) {
-      console.warn("Failed to queue email in mail collection:", mailErr);
+    // 4. Deliver the lead notification. The lead is already persisted above, so a
+    //    mail failure must not fail the visitor's submission.
+    const emailResult = await sendEmail({
+      to: LEAD_NOTIFICATION_EMAIL,
+      replyTo: cleanEmail,
+      subject: `New Lead Inquiry from ${cleanFirst} ${cleanLast} (${cleanCity})`,
+      text: `Name: ${cleanFirst} ${cleanLast}\nCity: ${cleanCity}\nPhone: ${cleanPhone}\nEmail: ${cleanEmail}\n\nProject Details:\n${cleanMessage}\n\nSubmitted at: ${isoDate}`,
+      html: `
+        <h2>New Website Consultation Inquiry</h2>
+        <p><strong>Name:</strong> ${escapeHtml(`${cleanFirst} ${cleanLast}`)}</p>
+        <p><strong>City / Location:</strong> ${escapeHtml(cleanCity)}</p>
+        <p><strong>Phone:</strong> ${escapeHtml(cleanPhone)}</p>
+        <p><strong>Email:</strong> ${escapeHtml(cleanEmail)}</p>
+        <hr />
+        <h3>Project Details:</h3>
+        <p>${escapeHtml(cleanMessage).replace(/\n/g, "<br/>")}</p>
+        <small>Lead ID: ${escapeHtml(leadRef.id)} · Timestamp: ${escapeHtml(isoDate)}</small>
+      `,
+    });
+
+    if (!emailResult.success) {
+      // Surface the outage in admin notifications rather than failing silently.
+      console.error(`Lead ${leadRef.id} saved but notification email failed:`, emailResult.error);
     }
 
     return NextResponse.json({
       success: true,
       id: leadRef.id,
-      message: "Inquiry successfully recorded and queued",
+      message: "Inquiry successfully recorded",
     });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : "Internal server error";

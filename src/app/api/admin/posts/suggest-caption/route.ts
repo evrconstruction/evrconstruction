@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { generatePostGeoEnhancements } from "@/lib/seo-agent/skills/saturday-post-enhancer";
 import { verifyAdminSession } from "@/lib/auth-guard";
 import { getGoogleAccessToken } from "@/lib/integrations/google-auth";
+import { SERVICE_AREA_TAGS } from "@/lib/site";
 
 export async function POST(req: Request) {
   try {
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
       ? imageBase64.substring(imageBase64.indexOf(":") + 1, imageBase64.indexOf(";"))
       : "image/jpeg";
 
-    const prompt = `You are the lead SEO & GEO copywriter for EVR Construction LLC (a licensed general contractor in Knoxville, East Tennessee serving Farragut, Maryville, Hardin Valley, Oak Ridge, Sevierville, Powell).
+    const prompt = `You are the lead SEO & GEO copywriter for EVR Construction LLC (a licensed general contractor in Knoxville, East Tennessee serving ${SERVICE_AREA_TAGS.join(", ")}).
 
 Analyze this construction project photo:
 1. Identify the specific construction work visible (e.g. composite decking, cedar gazebo, framing, screened porch, patio, railing).

@@ -1,7 +1,10 @@
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
+import { ConversionTracking } from "@/components/site/ConversionTracking";
 import { SITE } from "@/lib/site";
 import { SERVICES } from "@/lib/services";
+import { GA_MEASUREMENT_ID } from "@/lib/analytics";
+import Script from "next/script";
 import type { ReactNode } from "react";
 
 const localBusinessJsonLd = {
@@ -58,7 +61,6 @@ const localBusinessJsonLd = {
     "https://share.google/1cKZL2WUAFrtcCKV6",
     "https://www.yelp.com/biz/evr-construction-knoxville",
     "https://maps.google.com/?q=EVR+Construction+LLC+Knoxville+TN",
-    "https://nextdoor.com/pages/evr-construction-knoxville-tn/",
   ],
   geo: {
     "@type": "GeoCoordinates",
@@ -130,9 +132,24 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(siteNavigationJsonLd) }}
       />
+      {/* Analytics lives here, not in the root layout, so /admin pages stay out
+          of GA4 reports. */}
+      <Script
+        src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+        strategy="afterInteractive"
+      />
+      <Script id="google-analytics" strategy="afterInteractive">
+        {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', '${GA_MEASUREMENT_ID}');
+        `}
+      </Script>
       <Header />
       <main className="flex-1">{children}</main>
       <Footer />
+      <ConversionTracking />
     </>
   );
 }

@@ -1,9 +1,29 @@
+import { SERVICE_AREA_TAGS } from "@/lib/site";
+
 export interface GeoTagSuggestion {
   altText: string;
   serviceCategory: string;
   locationTag: string;
   suggestedTags: string[];
 }
+
+/** Extra spellings that should match a service area in post text. */
+const LOCATION_ALIASES: Record<string, readonly string[]> = {
+  "Lenoir City, TN": ["lenoir city", "lenoir"],
+};
+
+/**
+ * City matchers used to detect a location from post text.
+ *
+ * Derived from SITE.serviceAreas, which is the single published list. Do not
+ * add cities here that the site does not advertise, otherwise generated alt
+ * text will name locations the service-areas section omits.
+ */
+const EAST_TN_LOCATIONS: ReadonlyArray<{ tag: string; keywords: readonly string[] }> =
+  SERVICE_AREA_TAGS.map((tag) => ({
+    tag,
+    keywords: LOCATION_ALIASES[tag] ?? [tag.replace(/, TN$/, "").toLowerCase()],
+  }));
 
 export function generatePostGeoEnhancements(title: string, caption: string, areaHint?: string): GeoTagSuggestion {
   const cleanTitle = title.toLowerCase();
@@ -23,27 +43,6 @@ export function generatePostGeoEnhancements(title: string, caption: string, area
   } else if (cleanTitle.includes("framing") || cleanCaption.includes("carpentry") || cleanCaption.includes("corbel") || cleanCaption.includes("trim") || cleanCaption.includes("header")) {
     category = "Carpentry";
   }
-
-  const EAST_TN_LOCATIONS: Array<{ tag: string; keywords: string[] }> = [
-    { tag: "Farragut, TN", keywords: ["farragut"] },
-    { tag: "Hardin Valley, TN", keywords: ["hardin valley"] },
-    { tag: "Lenoir City, TN", keywords: ["lenoir city", "lenoir"] },
-    { tag: "Loudon, TN", keywords: ["loudon"] },
-    { tag: "Maryville, TN", keywords: ["maryville"] },
-    { tag: "Alcoa, TN", keywords: ["alcoa"] },
-    { tag: "Oak Ridge, TN", keywords: ["oak ridge"] },
-    { tag: "Powell, TN", keywords: ["powell"] },
-    { tag: "Clinton, TN", keywords: ["clinton"] },
-    { tag: "Bearden, TN", keywords: ["bearden"] },
-    { tag: "Sevierville, TN", keywords: ["sevierville"] },
-    { tag: "Pigeon Forge, TN", keywords: ["pigeon forge"] },
-    { tag: "Gatlinburg, TN", keywords: ["gatlinburg"] },
-    { tag: "Seymour, TN", keywords: ["seymour"] },
-    { tag: "Morristown, TN", keywords: ["morristown"] },
-    { tag: "Maynardville, TN", keywords: ["maynardville"] },
-    { tag: "Kingston, TN", keywords: ["kingston"] },
-    { tag: "Tellico Plains, TN", keywords: ["tellico"] },
-  ];
 
   let detectedArea = areaHint;
   if (!detectedArea) {

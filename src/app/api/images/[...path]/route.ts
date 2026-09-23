@@ -64,7 +64,11 @@ export async function GET(
           const buffer = fs.readFileSync(/*turbopackIgnore: true*/ lp);
           const ext = path.extname(lp).toLowerCase();
           const contentType = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
-          file.save(buffer, { metadata: { contentType, cacheControl: "public, max-age=31536000" } }).catch(() => {});
+          // Best-effort warm of the bucket; the response is served from the
+          // local file regardless, so a failure must not fail the request.
+          file
+            .save(buffer, { metadata: { contentType, cacheControl: "public, max-age=31536000" } })
+            .catch((err) => console.warn(`Failed to warm storage cache for ${filePath}:`, err));
           return new NextResponse(new Uint8Array(buffer), {
             status: 200,
             headers: {

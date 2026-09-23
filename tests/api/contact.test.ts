@@ -3,11 +3,35 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Mock firebase-admin
 const mockAddLead = vi.fn().mockResolvedValue({ id: "lead-test-123" });
 const mockAddMail = vi.fn().mockResolvedValue({ id: "mail-test-123" });
+
+// Stateful stand-in for the Firestore documents behind the rate limiter, so the
+// transaction mock below enforces a real per-caller budget.
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
 vi.mock("@/lib/firebase-admin", () => ({
   adminDb: {
     collection: vi.fn((colName: string) => ({
       add: colName === "leads" ? mockAddLead : mockAddMail,
+      doc: vi.fn((id: string) => ({ id })),
     })),
+    runTransaction: vi.fn(async (callback: (tx: unknown) => unknown) => {
+      const transaction = {
+        get: vi.fn(async (ref: { id: string }) => {
+          const data = rateLimitStore.get(ref.id);
+          return { exists: Boolean(data), data: () => data };
+        }),
+        set: vi.fn((ref: { id: string }, value: { count: number; resetTime: number }) => {
+          rateLimitStore.set(ref.id, value);
+        }),
+        update: vi.fn((ref: { id: string }, value: { count: number }) => {
+          const existing = rateLimitStore.get(ref.id);
+          if (existing) {
+            rateLimitStore.set(ref.id, { ...existing, count: value.count });
+          }
+        }),
+      };
+      return callback(transaction);
+    }),
   },
 }));
 
@@ -17,11 +41,20 @@ vi.mock("@/lib/notifications", () => ({
   addNotification: (...args: unknown[]) => mockAddNotification(...args),
 }));
 
+// Mock email delivery so tests never reach the Resend network.
+const mockSendEmail = vi.fn().mockResolvedValue({ success: true, id: "email-test-123" });
+vi.mock("@/lib/email", () => ({
+  sendEmail: (...args: unknown[]) => mockSendEmail(...args),
+  escapeHtml: (value: string) =>
+    value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"),
+}));
+
 import { POST } from "@/app/api/contact/route";
 
 describe("Contact API Route (/api/contact)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    rateLimitStore.clear();
   });
 
   it("returns HTTP 400 when required fields are missing", async () => {
@@ -69,6 +102,7 @@ describe("Contact API Route (/api/contact)", () => {
     expect(data.success).toBe(true);
     expect(mockAddLead).not.toHaveBeenCalled();
     expect(mockAddNotification).not.toHaveBeenCalled();
+    expect(mockSendEmail).not.toHaveBeenCalled();
   });
 
   it("processes valid submission and queues single email and notification", async () => {
@@ -95,6 +129,14 @@ describe("Contact API Route (/api/contact)", () => {
     expect(data.success).toBe(true);
     expect(mockAddLead).toHaveBeenCalledTimes(1);
     expect(mockAddNotification).toHaveBeenCalledTimes(1);
+    // The lead email is now sent directly rather than queued in Firestore.
+    expect(mockSendEmail).toHaveBeenCalledTimes(1);
+    expect(mockSendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "contact@evrconstructions.com",
+        replyTo: "henry.smith@example.com",
+      })
+    );
     // Verify duplicate email is prevented (triggerEmail: false in notification)
     expect(mockAddNotification).toHaveBeenCalledWith(
       expect.objectContaining({
