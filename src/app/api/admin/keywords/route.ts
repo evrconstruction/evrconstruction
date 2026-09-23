@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { fetchSearchConsoleKeywords, GSCKeywordItem } from "@/lib/integrations/google-search-console";
+import {
+  fetchSearchConsoleKeywords,
+  GSCKeywordItem,
+  NO_IMPRESSIONS_TREND,
+} from "@/lib/integrations/google-search-console";
 import { adminDb } from "@/lib/firebase-admin";
 import { verifyAdminSession } from "@/lib/auth-guard";
 
@@ -71,7 +75,7 @@ export async function POST(request: Request) {
         lang: "EN",
         position: 0,
         volume: 0,
-        trend: "Target (Pending Indexing)",
+        trend: NO_IMPRESSIONS_TREND,
         clicks: 0,
         impressions: 0,
         ctr: "--",

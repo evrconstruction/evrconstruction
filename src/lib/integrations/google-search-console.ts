@@ -1,5 +1,9 @@
 import { adminDb } from "@/lib/firebase-admin";
 import { getGoogleAccessToken } from "./google-auth";
+import {
+  assignQueries,
+  type KeywordMatchKind,
+} from "@/lib/keyword-matching";
 
 export interface GSCKeywordItem {
   id: string;
@@ -36,6 +40,31 @@ export interface TrackedKeywordDoc {
   category?: string;
   targetLocation?: string;
   createdAt: string;
+}
+
+/** Window Google is queried for. The labels below quote it, so keep in sync. */
+const REPORTING_WINDOW_DAYS = 28;
+
+/**
+ * Shown for a tracked keyword Google reported no impressions for. Worded as a
+ * statement about traffic rather than about indexing: a tracked keyword is a
+ * target we are aiming at, and Google only reports a query once someone has
+ * actually searched it.
+ */
+export const NO_IMPRESSIONS_TREND = `No impressions (${REPORTING_WINDOW_DAYS}d)`;
+
+/**
+ * Label for a ranking position. When the numbers came from a variant query
+ * rather than the exact phrase, the query is named so an approximate match is
+ * never mistaken for a precise one.
+ */
+function describeTrend(
+  position: number,
+  match?: { query: string; kind: KeywordMatchKind }
+): string {
+  const rank = position <= 10 ? "↑ Top 10" : "↑ Page 2 Opportunity";
+  if (!match || match.kind === "exact") return rank;
+  return `${rank} · "${match.query}"`;
 }
 
 export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
@@ -77,7 +106,7 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
     try {
       const endDate = new Date();
       const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 28);
+      startDate.setDate(startDate.getDate() - REPORTING_WINDOW_DAYS);
       const start = startDate.toISOString().split("T")[0];
       const end = endDate.toISOString().split("T")[0];
 
@@ -126,13 +155,15 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
 
   // 3. Build unified keyword list
   const combinedKeywords: GSCKeywordItem[] = [];
-  const handledQueries = new Set<string>();
+  const trackedMatches = assignQueries(trackedKeywords, [...gscQueriesMap.keys()]);
+  const claimedQueries = new Set(
+    [...trackedMatches.values()].map((match) => match.query)
+  );
 
   // Add tracked keywords first
   for (const tk of trackedKeywords) {
-    const query = tk.keyword.toLowerCase();
-    handledQueries.add(query);
-    const gscData = gscQueriesMap.get(query);
+    const match = trackedMatches.get(tk.id);
+    const gscData = match ? gscQueriesMap.get(match.query) : undefined;
 
     if (gscData) {
       combinedKeywords.push({
@@ -141,7 +172,7 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
         lang: "EN",
         position: gscData.position,
         volume: gscData.impressions,
-        trend: gscData.position <= 10 ? "↑ Top 10" : "↑ Page 2 Opportunity",
+        trend: describeTrend(gscData.position, match),
         clicks: gscData.clicks,
         impressions: gscData.impressions,
         ctr: `${(gscData.ctr * 100).toFixed(1)}%`,
@@ -153,7 +184,7 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
         lang: "EN",
         position: 0,
         volume: 0,
-        trend: "Target (Pending Indexing)",
+        trend: NO_IMPRESSIONS_TREND,
         clicks: 0,
         impressions: 0,
         ctr: "--",
@@ -161,16 +192,16 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
     }
   }
 
-  // Add remaining GSC queries not explicitly tracked yet
+  // Reported queries not backing a tracked keyword are listed in their own right.
   gscQueriesMap.forEach((gscData, query) => {
-    if (!handledQueries.has(query)) {
+    if (!claimedQueries.has(query)) {
       combinedKeywords.push({
         id: `gsc-${encodeURIComponent(query)}`,
         keyword: query,
         lang: "EN",
         position: gscData.position,
         volume: gscData.impressions,
-        trend: gscData.position <= 10 ? "↑ Top 10" : "↑ Page 2 Opportunity",
+        trend: describeTrend(gscData.position),
         clicks: gscData.clicks,
         impressions: gscData.impressions,
         ctr: `${(gscData.ctr * 100).toFixed(1)}%`,

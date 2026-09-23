@@ -30,7 +30,7 @@ interface AiSuggestion {
 export default function KeywordsPage() {
   const [data, setData] = useState<KeywordsResponse | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterTab, setFilterTab] = useState<"all" | "ranked" | "pending">("all");
+  const [filterTab, setFilterTab] = useState<"all" | "ranked" | "unranked">("all");
   const [keywordsList, setKeywordsList] = useState<KeywordItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAiModal, setShowAiModal] = useState(false);
@@ -148,7 +148,7 @@ export default function KeywordsPage() {
   }
 
   const indexedCount = keywordsList.filter((k) => k.position > 0).length;
-  const pendingCount = Math.max(0, keywordsList.length - indexedCount);
+  const noImpressionsCount = Math.max(0, keywordsList.length - indexedCount);
   const top10Count = keywordsList.filter((k) => k.position > 0 && k.position <= 10).length;
   const top20Count = keywordsList.filter((k) => k.position > 0 && k.position <= 20).length;
   const top50Count = keywordsList.filter((k) => k.position > 0 && k.position <= 50).length;
@@ -157,7 +157,7 @@ export default function KeywordsPage() {
   const filteredKeywords = keywordsList
     .filter((k) => {
       if (filterTab === "ranked") return k.position > 0;
-      if (filterTab === "pending") return k.position === 0;
+      if (filterTab === "unranked") return k.position === 0;
       return true;
     })
     .filter((k) =>
@@ -246,9 +246,9 @@ export default function KeywordsPage() {
             <div>
               <p className="text-2xl sm:text-3xl font-bold text-amber-500 font-heading flex items-center gap-1.5 justify-center sm:justify-start">
                 <span>⏱</span>
-                <span>{loading ? "..." : pendingCount}</span>
+                <span>{loading ? "..." : noImpressionsCount}</span>
               </p>
-              <p className="text-xs font-medium text-slate-500 mt-1">Pending Index</p>
+              <p className="text-xs font-medium text-slate-500 mt-1">No Impressions (28D)</p>
             </div>
             <div>
               <p className="text-2xl sm:text-3xl font-bold text-blue-600 font-heading flex items-center gap-1.5 justify-center sm:justify-start">
@@ -295,18 +295,18 @@ export default function KeywordsPage() {
             </button>
             <button
               type="button"
-              onClick={() => setFilterTab("pending")}
+              onClick={() => setFilterTab("unranked")}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
-                filterTab === "pending"
+                filterTab === "unranked"
                   ? "bg-amber-600 text-white font-bold"
                   : "text-amber-700 bg-amber-50 hover:bg-amber-100"
               }`}
             >
-              <span>Pending Index</span>
+              <span>No Impressions</span>
               <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-                filterTab === "pending" ? "bg-white/25 text-white" : "bg-amber-200/70 text-amber-800"
+                filterTab === "unranked" ? "bg-white/25 text-white" : "bg-amber-200/70 text-amber-800"
               }`}>
-                {pendingCount}
+                {noImpressionsCount}
               </span>
             </button>
           </div>
@@ -389,11 +389,13 @@ export default function KeywordsPage() {
                     </td>
 
                     <td className="px-6 py-4 font-semibold text-slate-600">
-                      {isRanked ? (
-                        <span className="text-emerald-600">{item.trend}</span>
-                      ) : (
-                        <span className="text-slate-400 text-[11px]">Tracking (Pending Index)</span>
-                      )}
+                      <span
+                        className={
+                          isRanked ? "text-emerald-600" : "text-slate-400 text-[11px]"
+                        }
+                      >
+                        {item.trend}
+                      </span>
                     </td>
 
                     <td className="px-6 py-4 text-right">
