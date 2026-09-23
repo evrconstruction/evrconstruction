@@ -4,8 +4,11 @@ import type { NextRequest } from "next/server";
 /**
  * Junk paths that Google discovered (spam referrers / URL artifacts).
  * Returning 410 Gone tells Google these never existed — drop them fast.
+ *
+ * Compared after decoding, so both the literal and percent-encoded spellings of
+ * each entry match: "/$" and "/%24", "/&" and "/%26", "/%" and "/%25".
  */
-const GONE_PATHS = new Set(["/$", "/&"]);
+const GONE_PATHS = new Set(["/$", "/&", "/%"]);
 
 /**
  * `request.nextUrl.pathname` keeps its percent-encoding, so a request for
@@ -15,7 +18,8 @@ const GONE_PATHS = new Set(["/$", "/&"]);
  * `decodeURIComponent` is required rather than `decodeURI`: the latter leaves
  * reserved characters such as "$" and "&" encoded, which is exactly the case
  * being handled. It throws on malformed input like "/%", so fall back to the
- * raw value rather than failing the request.
+ * raw value rather than failing the request — that fallback is what lets the
+ * bare "/%" form match too.
  */
 function decodePath(pathname: string): string {
   try {
