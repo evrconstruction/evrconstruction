@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import type { ProjectPost } from "@/lib/posts-store";
 import { generatePostGeoEnhancements } from "@/lib/geo-enhancements";
+import { SERVICE_AREA_TAGS } from "@/lib/site";
 import { useAuth } from "@/lib/firebase/auth-context";
 
 const CATEGORIES = ["Decks", "Gazebos", "Restoration", "Remodeling", "Carpentry", "Patios"] as const;
@@ -22,11 +23,13 @@ export default function PostsManagerPage() {
 
   // Form State
   const [selectedCategory, setSelectedCategory] = useState<typeof CATEGORIES[number]>("Decks");
+  const [selectedArea, setSelectedArea] = useState<string>(SERVICE_AREA_TAGS[0]);
   const [caption, setCaption] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [autoDetectFeedback, setAutoDetectFeedback] = useState<string | null>(null);
+  const [captionError, setCaptionError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const SEO_SUGGESTIONS: Record<typeof CATEGORIES[number], string[]> = {
@@ -65,6 +68,8 @@ export default function PostsManagerPage() {
   const [analyzingPhoto, setAnalyzingPhoto] = useState(false);
 
   async function handleSuggestCaption() {
+    setCaptionError(null);
+
     if (imagePreview) {
       setAnalyzingPhoto(true);
       try {
@@ -74,27 +79,40 @@ export default function PostsManagerPage() {
           body: JSON.stringify({
             imageBase64: imagePreview,
             currentCategory: selectedCategory,
+            city: selectedArea.replace(/, TN$/, ""),
           }),
         });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.caption) setCaption(data.caption);
-          if (
-            typeof data.category === "string" &&
-            CATEGORIES.includes(data.category as (typeof CATEGORIES)[number])
-          ) {
-            setSelectedCategory(data.category as (typeof CATEGORIES)[number]);
-          }
+
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          setCaptionError(
+            data?.error ||
+              "The caption could not be generated. Write one manually, or try again."
+          );
           return;
         }
+
+        if (data?.caption) setCaption(data.caption);
+        if (
+          typeof data?.category === "string" &&
+          CATEGORIES.includes(data.category as (typeof CATEGORIES)[number])
+        ) {
+          setSelectedCategory(data.category as (typeof CATEGORIES)[number]);
+        }
+        return;
       } catch (err) {
-        console.warn("Vision suggest failed, using template:", err);
+        console.warn("AI caption request failed:", err);
+        setCaptionError(
+          "The caption could not be generated. Write one manually, or try again."
+        );
+        return;
       } finally {
         setAnalyzingPhoto(false);
       }
     }
 
-    // Preset fallback if no photo selected yet
+    // No photo selected yet, so there is nothing for the model to look at.
     const list = SEO_SUGGESTIONS[selectedCategory] || SEO_SUGGESTIONS.Decks;
     const nextText = list[suggestionIndex % list.length];
     setCaption(nextText);
@@ -423,6 +441,27 @@ export default function PostsManagerPage() {
                 </select>
               </div>
 
+              {/* Service Area Dropdown */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Service Area
+                </label>
+                <select
+                  value={selectedArea}
+                  onChange={(e) => setSelectedArea(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-900 focus:border-[#f4b400] focus:bg-white focus:outline-hidden"
+                >
+                  {SERVICE_AREA_TAGS.map((area) => (
+                    <option key={area} value={area}>
+                      {area}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-[11px] text-slate-500">
+                  Where this job was. The AI uses it to place the caption and to apply that city&apos;s posting brief.
+                </p>
+              </div>
+
               {/* Caption Textarea */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
@@ -456,6 +495,18 @@ export default function PostsManagerPage() {
                       type="button"
                       onClick={() => setAutoDetectFeedback(null)}
                       className="text-emerald-600 hover:text-emerald-900 text-xs ml-2 cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+                {captionError && (
+                  <div className="mb-2 text-xs font-semibold text-rose-800 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-lg flex items-start justify-between gap-2">
+                    <span>{captionError}</span>
+                    <button
+                      type="button"
+                      onClick={() => setCaptionError(null)}
+                      className="text-rose-600 hover:text-rose-900 text-xs cursor-pointer"
                     >
                       ✕
                     </button>
