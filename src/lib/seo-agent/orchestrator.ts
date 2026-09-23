@@ -27,7 +27,7 @@ export const SKILLS_CONFIG: AgentSkill[] = [
     name: "Keywords & Ranking Tracker",
     day: "Monday",
     category: "Keywords",
-    description: "Monitors GSC search performance & identifies high-opportunity Page-2 local terms (Pos 11–25).",
+    description: "Reviews the queries Google actually reported and flags page 2–5 terms worth publishing content for.",
     status: "Idle",
     findingsCount: 0,
   },

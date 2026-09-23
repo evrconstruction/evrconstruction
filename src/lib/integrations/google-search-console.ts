@@ -15,6 +15,12 @@ export interface GSCKeywordItem {
   clicks?: number;
   impressions?: number;
   ctr?: string;
+  /**
+   * The query Google actually reported when it differs from `keyword`. A tracked
+   * keyword can match a variant spelling, and consumers that talk about what
+   * people searched should quote this rather than the tracked phrase.
+   */
+  matchedQuery?: string;
 }
 
 export interface GSCReportResult {
@@ -173,6 +179,7 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
         position: gscData.position,
         volume: gscData.impressions,
         trend: describeTrend(gscData.position, match),
+        matchedQuery: match?.query,
         clicks: gscData.clicks,
         impressions: gscData.impressions,
         ctr: `${(gscData.ctr * 100).toFixed(1)}%`,
