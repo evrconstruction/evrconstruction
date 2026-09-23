@@ -83,18 +83,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // www.<domain> served a full duplicate of the apex domain. Send it to the
-  // canonical host permanently (308); path and query string are preserved.
-  async redirects() {
-    return [
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: "www.evrconstructions.com" }],
-        destination: "https://evrconstructions.com/:path*",
-        permanent: true,
-      },
-    ];
-  },
   async rewrites() {
     return [
       {
