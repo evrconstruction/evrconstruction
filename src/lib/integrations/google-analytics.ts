@@ -22,6 +22,98 @@ export interface GA4ReportResult {
   };
 }
 
+/**
+ * Count how often specific GA4 events fired over a period.
+ *
+ * Used for conversion telemetry. These events are recorded in GA4 only — the
+ * `click_to_call` handler in ConversionTracking.tsx is a client-side listener
+ * with no server component — so GA4 is the only place the real numbers exist.
+ *
+ * @returns event name -> count. Events with no occurrences are omitted.
+ */
+export async function fetchGA4EventCounts(
+  eventNames: string[],
+  days = 30
+): Promise<{ connected: boolean; counts: Record<string, number>; error?: string }> {
+  let propertyId = "552222580";
+
+  try {
+    const configDoc = await adminDb.collection("integrations").doc("google-analytics").get();
+    if (configDoc.exists) {
+      const data = configDoc.data() || {};
+      if (data.propertyId) propertyId = data.propertyId;
+    }
+  } catch (err) {
+    console.warn("Failed to read GA4 integration config:", err);
+  }
+
+  const token = await getGoogleAccessToken([
+    "https://www.googleapis.com/auth/analytics.readonly",
+  ]);
+
+  if (!token) {
+    return {
+      connected: false,
+      counts: {},
+      error: "Google Analytics 4 access token could not be acquired.",
+    };
+  }
+
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const cleanPropId = propertyId.replace(/^properties\//, "").replace(/^G-/, "");
+
+  try {
+    const res = await fetch(
+      `https://analyticsdata.googleapis.com/v1beta/properties/${cleanPropId}:runReport`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dateRanges: [
+            {
+              startDate: startDate.toISOString().split("T")[0],
+              endDate: endDate.toISOString().split("T")[0],
+            },
+          ],
+          dimensions: [{ name: "eventName" }],
+          metrics: [{ name: "eventCount" }],
+          dimensionFilter: {
+            filter: {
+              fieldName: "eventName",
+              inListFilter: { values: eventNames },
+            },
+          },
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      const detail = await res.text();
+      console.warn(`GA4 event query returned HTTP ${res.status}:`, detail.slice(0, 300));
+      return { connected: false, counts: {}, error: `GA4 returned HTTP ${res.status}.` };
+    }
+
+    const json = await res.json();
+    const counts: Record<string, number> = {};
+    for (const row of json.rows ?? []) {
+      const name = row.dimensionValues?.[0]?.value;
+      const value = Number.parseInt(row.metricValues?.[0]?.value ?? "0", 10);
+      if (name) counts[name] = Number.isFinite(value) ? value : 0;
+    }
+
+    return { connected: true, counts };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "unknown error";
+    console.warn("GA4 event query failed:", message);
+    return { connected: false, counts: {}, error: message };
+  }
+}
+
 export async function fetchGA4Analytics(days = 30): Promise<GA4ReportResult> {
   let propertyId = "552222580";
 

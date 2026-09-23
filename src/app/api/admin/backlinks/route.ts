@@ -7,10 +7,17 @@ export interface BacklinkItem {
   id: string;
   sourceUrl: string;
   title: string;
-  status: "Active" | "Lost" | "Pending";
+  status: BacklinkStatus;
   type: "DoFollow" | "NoFollow";
   lastVerified: string;
 }
+
+/**
+ * `Pending` means the listing has never been checked.
+ * `Blocked` means the directory refused the check, so the listing state is
+ * unknown — it is not evidence that the citation is missing.
+ */
+export type BacklinkStatus = "Active" | "Missing" | "Unreachable" | "Blocked" | "Pending";
 
 export interface OutreachDraft {
   id: string;
@@ -24,23 +31,23 @@ const INITIAL_VERIFIED_CITATIONS: Omit<BacklinkItem, "id">[] = [
   {
     sourceUrl: "https://www.bbb.org/us/tn/knoxville/profile/deck-builder/evr-construction-llc-0533-90046668",
     title: "Better Business Bureau — EVR Construction LLC (Knoxville, TN)",
-    status: "Active",
+    status: "Pending",
     type: "NoFollow",
-    lastVerified: new Date().toLocaleDateString("en-US"),
+    lastVerified: "",
   },
   {
     sourceUrl: "https://m.yelp.com/biz/evr-construction-knoxville",
     title: "Yelp Knoxville — EVR Construction",
-    status: "Active",
+    status: "Pending",
     type: "NoFollow",
-    lastVerified: new Date().toLocaleDateString("en-US"),
+    lastVerified: "",
   },
   {
     sourceUrl: "https://www.bizapedia.com/tn/evr-construction-llc.html",
     title: "Bizapedia Tennessee — EVR Construction LLC Company Profile",
-    status: "Active",
+    status: "Pending",
     type: "DoFollow",
-    lastVerified: new Date().toLocaleDateString("en-US"),
+    lastVerified: "",
   },
 ];
 
@@ -73,7 +80,7 @@ export async function GET() {
         id: doc.id,
         sourceUrl: d.sourceUrl || "",
         title: d.title || "",
-        status: d.status || "Active",
+        status: (d.status as BacklinkStatus) || "Pending",
         type: d.type || "DoFollow",
         lastVerified: d.lastVerified || new Date().toLocaleDateString("en-US"),
       };
@@ -84,7 +91,9 @@ export async function GET() {
 
   const total = backlinksList.length;
   const active = backlinksList.filter((b) => b.status === "Active").length;
-  const lost = backlinksList.filter((b) => b.status === "Lost").length;
+  const needsAttention = backlinksList.filter(
+    (b) => b.status === "Missing" || b.status === "Unreachable"
+  ).length;
   const noFollow = backlinksList.filter((b) => b.type === "NoFollow").length;
 
   let outreachList: OutreachDraft[] = [];
@@ -108,7 +117,7 @@ export async function GET() {
     metrics: {
       total,
       active,
-      lost,
+      needsAttention,
       noFollow,
     },
     backlinks: backlinksList,

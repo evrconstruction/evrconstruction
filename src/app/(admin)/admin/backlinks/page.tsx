@@ -185,10 +185,12 @@ export default function BacklinksPage() {
 
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
-            Lost / Error
+            Needs Attention
           </p>
           <p className="text-3xl font-bold text-rose-500 font-heading">
-            {loading ? "..." : backlinks.filter((b) => b.status === "Lost").length}
+            {loading
+              ? "..."
+              : backlinks.filter((b) => b.status === "Missing" || b.status === "Unreachable").length}
           </p>
         </div>
 

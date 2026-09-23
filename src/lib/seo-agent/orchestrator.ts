@@ -16,6 +16,7 @@ import { addNotification } from "@/lib/notifications";
 import { adminDb } from "@/lib/firebase-admin";
 import { acquireLock, releaseLock } from "@/lib/rate-limit";
 
+/** True while a full-skill run is in progress, so nested calls do not double-run. */
 const AGENT_LOCK_NAME = "seo-agent-run";
 /** Upper bound on a single skill run, so a crashed instance cannot wedge the lock. */
 const AGENT_LOCK_TTL_MS = 5 * 60 * 1000;
@@ -45,7 +46,7 @@ export const SKILLS_CONFIG: AgentSkill[] = [
     name: "Technical & On-Page Schema Auditor",
     day: "Wednesday",
     category: "Technical",
-    description: "Audits public pages, JSON-LD LocalBusiness & Project schema, meta tags, and mobile accessibility.",
+    description: "Audits the live public routes for HTTP failures and inspects the homepage's structured data.",
     status: "Idle",
     findingsCount: 0,
   },
@@ -92,6 +93,8 @@ interface AgentStore {
   skills: AgentSkill[];
   directives: AgentDirective[];
   recentRuns: AgentRunLog[];
+  /** Whether directives and runs have been read from Firestore yet. */
+  hydrated?: boolean;
 }
 
 const globalAgentStore = global as unknown as { __EVR_SEO_AGENT_STORE__?: AgentStore };
@@ -133,6 +136,43 @@ async function getPersistedConfig(): Promise<AgentConfig> {
   return store.config;
 }
 
+/**
+ * Load directives and recent runs from Firestore into the in-memory store, once
+ * per instance.
+ *
+ * This has to happen before new directives are de-duplicated. The store lives in
+ * a module-level global, so a freshly started Cloud Run instance begins empty;
+ * without this, every directive already in Firestore looks new and gets written
+ * again, which is how identical directives accumulated.
+ *
+ * On failure the hydrated flag is left unset so the next call retries rather
+ * than silently proceeding with an empty view.
+ */
+async function hydrateStore(store: AgentStore): Promise<void> {
+  if (store.hydrated) return;
+
+  try {
+    const [dirSnap, runSnap] = await Promise.all([
+      adminDb.collection("seo_agent_directives").get(),
+      adminDb.collection("seo_agent_runs").orderBy("timestamp", "desc").limit(50).get(),
+    ]);
+
+    store.directives = dirSnap.docs.map((d) => ({
+      id: d.id,
+      ...(d.data() as Omit<AgentDirective, "id">),
+    }));
+
+    store.recentRuns = runSnap.docs.map((d) => ({
+      id: d.id,
+      ...(d.data() as Omit<AgentRunLog, "id">),
+    }));
+
+    store.hydrated = true;
+  } catch (err) {
+    console.warn("Could not hydrate the agent store from Firestore:", err);
+  }
+}
+
 export async function getSeoAgentDashboardData(): Promise<SeoAgentDashboardData> {
   const store = getStore();
   const config = await getPersistedConfig();
@@ -141,32 +181,18 @@ export async function getSeoAgentDashboardData(): Promise<SeoAgentDashboardData>
   let activeBacklinks = 0;
   let trackedKeywords = 0;
   try {
-    const [backlinkSnap, keywordSnap, dirSnap, runSnap] = await Promise.all([
+    const [backlinkSnap, keywordSnap] = await Promise.all([
       adminDb.collection("backlinks").where("status", "==", "Active").get(),
       adminDb.collection("tracked_keywords").get(),
-      adminDb.collection("seo_agent_directives").get(),
-      adminDb.collection("seo_agent_runs").orderBy("timestamp", "desc").limit(20).get(),
     ]);
 
     activeBacklinks = backlinkSnap.size;
     trackedKeywords = keywordSnap.size;
-
-    if (!dirSnap.empty && store.directives.length === 0) {
-      store.directives = dirSnap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Omit<AgentDirective, "id">),
-      }));
-    }
-
-    if (!runSnap.empty && store.recentRuns.length === 0) {
-      store.recentRuns = runSnap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Omit<AgentRunLog, "id">),
-      }));
-    }
   } catch (err) {
     console.warn("Firestore fetch in getSeoAgentDashboardData:", err);
   }
+
+  await hydrateStore(store);
 
   const totalRuns = store.recentRuns.length;
   const passedRuns = store.recentRuns.filter((r) => r.status === "Success").length;
@@ -210,7 +236,6 @@ export const toggleAutonomousAgent = toggleAutonomousEngine;
 export async function runSkill(skillId: string): Promise<{ success: boolean; log: AgentRunLog; directives: AgentDirective[] }> {
   const store = getStore();
   const config = await getPersistedConfig();
-
   if (!config.autonomousActive) {
     throw new Error("Cannot run skill while autonomous engine is paused (Kill Switch active).");
   }
@@ -268,8 +293,17 @@ export async function runSkill(skillId: string): Promise<{ success: boolean; log
 
     store.recentRuns = [log, ...store.recentRuns].slice(0, 50);
 
+    // Directives already in Firestore must be visible before de-duplicating,
+    // otherwise a fresh instance with an empty in-memory store treats every
+    // existing directive as new and writes a duplicate of each one.
+    await hydrateStore(store);
+
     for (const directive of newDirectives) {
-      const exists = store.directives.some((d) => d.title === directive.title);
+      // Only an Open directive suppresses a new one. A problem that recurs after
+      // its directive was resolved must be able to raise a fresh directive.
+      const exists = store.directives.some(
+        (d) => d.status === "Open" && d.title === directive.title
+      );
       if (!exists) {
         store.directives.unshift(directive);
         await adminDb

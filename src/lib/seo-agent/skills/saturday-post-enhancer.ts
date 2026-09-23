@@ -52,7 +52,7 @@ export async function runSaturdayPostEnhancerSkill(): Promise<SkillResult> {
     skillName: "Project Post Geo-Enhancer",
     status: "Success",
     durationMs: Date.now() - start,
-    summary: `Audited all ${snapshot.docs.length} portfolio posts in Cloud Storage & Firestore. ${completeAltCount} fully optimized with localized descriptions.`,
+    summary: `Audited all ${snapshot.docs.length} portfolio posts in Firestore. ${completeAltCount} have descriptive alt text.`,
     findings,
   };
 

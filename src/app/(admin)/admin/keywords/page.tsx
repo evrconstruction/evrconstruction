@@ -25,6 +25,8 @@ interface AiSuggestion {
   keyword: string;
   category: string;
   location: string;
+  /** One sentence from the model explaining why this term is worth targeting. */
+  rationale?: string;
 }
 
 export default function KeywordsPage() {
@@ -36,6 +38,8 @@ export default function KeywordsPage() {
   const [showAiModal, setShowAiModal] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AiSuggestion[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiModel, setAiModel] = useState<string | null>(null);
   const [newKeywordInput, setNewKeywordInput] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Decks");
   const [selectedLocation, setSelectedLocation] = useState("Knoxville, TN");
@@ -110,14 +114,25 @@ export default function KeywordsPage() {
   async function handleOpenAiSuggestions() {
     setShowAiModal(true);
     setAiLoading(true);
+    setAiError(null);
     try {
       const res = await fetch("/api/admin/keywords/suggest", { method: "POST" });
-      if (res.ok) {
-        const json = await res.json();
-        setAiSuggestions(json.suggestions || []);
+      const json = await res.json();
+
+      if (!res.ok) {
+        // Surface the real reason instead of an empty list, so a failed AI call
+        // is never mistaken for "no suggestions available".
+        setAiSuggestions([]);
+        setAiError(json.error || `Request failed with HTTP ${res.status}.`);
+        return;
       }
+
+      setAiSuggestions(json.suggestions || []);
+      setAiModel(json.model || null);
     } catch (err) {
       console.error("Failed to get AI suggestions:", err);
+      setAiSuggestions([]);
+      setAiError("Could not reach the AI service. Check your connection and try again.");
     } finally {
       setAiLoading(false);
     }
@@ -533,7 +548,9 @@ export default function KeywordsPage() {
                   <span>AI Keyword Opportunities</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  High-intent East Tennessee search terms tailored to EVR Construction.
+                  {aiModel
+                    ? `Reasoned by ${aiModel} from your live Search Console data.`
+                    : "Reasons over your live Search Console data to find terms worth targeting."}
                 </p>
               </div>
               <button
@@ -547,40 +564,63 @@ export default function KeywordsPage() {
 
             <div className="mt-4 space-y-3 max-h-80 overflow-y-auto pr-1">
               {aiLoading ? (
-                <p className="text-xs text-slate-400 py-12 text-center">Analyzing local search patterns...</p>
+                <p className="text-xs text-slate-400 py-12 text-center">
+                  Reasoning over your Search Console data...
+                </p>
+              ) : aiError ? (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 space-y-2">
+                  <p className="text-xs font-bold text-rose-800">
+                    AI suggestions unavailable
+                  </p>
+                  <p className="text-[11px] text-rose-700 leading-relaxed">{aiError}</p>
+                  <button
+                    type="button"
+                    onClick={handleOpenAiSuggestions}
+                    className="text-[11px] font-bold text-rose-800 hover:underline cursor-pointer"
+                  >
+                    Try again
+                  </button>
+                </div>
               ) : aiSuggestions.length > 0 ? (
                 aiSuggestions.map((sug) => (
                   <div
                     key={sug.keyword}
-                    className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition"
+                    className="p-3 rounded-lg border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition"
                   >
-                    <div>
-                      <p className="text-xs font-bold text-slate-900">{sug.keyword}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] font-semibold text-[#f4b400] uppercase tracking-wider">
-                          {sug.category}
-                        </span>
-                        <span className="text-slate-300">•</span>
-                        <span className="text-[10px] text-slate-500">{sug.location}</span>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-900">{sug.keyword}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] font-semibold text-[#f4b400] uppercase tracking-wider">
+                            {sug.category}
+                          </span>
+                          <span className="text-slate-300">•</span>
+                          <span className="text-[10px] text-slate-500">{sug.location}</span>
+                        </div>
+                        {sug.rationale && (
+                          <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                            {sug.rationale}
+                          </p>
+                        )}
                       </div>
-                    </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleAddAiSuggestion(sug)}
-                      className="rounded-md bg-[#1f2521] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#2c352f] transition cursor-pointer shrink-0"
-                    >
-                      + Track
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAddAiSuggestion(sug)}
+                        className="rounded-md bg-[#1f2521] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#2c352f] transition cursor-pointer shrink-0"
+                      >
+                        + Track
+                      </button>
+                    </div>
                   </div>
                 ))
               ) : (
                 <div className="p-8 text-center text-xs text-slate-400">
-                  <p>All suggestions added!</p>
+                  <p>Every suggestion is already tracked.</p>
                   <button
                     type="button"
                     onClick={handleOpenAiSuggestions}
-                    className="mt-2 text-xs font-bold text-[#1f2521] hover:underline"
+                    className="mt-2 text-xs font-bold text-[#1f2521] hover:underline cursor-pointer"
                   >
                     Generate More Ideas
                   </button>

@@ -30,10 +30,18 @@ export async function runSundayDigestSkill(): Promise<SkillResult> {
     console.warn("Failed to query live Firestore metrics in Sunday digest:", err);
   }
 
-  const healthScore = recentRunsCount > 0 ? Math.round((successfulRunsCount / recentRunsCount) * 100) : 100;
+  // Share of runs that finished without reporting a problem. The Tuesday and
+  // Wednesday skills record "Error" when they complete and find something, so
+  // this is a cleanliness rate, not an uptime rate, and it is not an SEO score:
+  // a week of clean runs can still sit on unchanged rankings. Earlier versions
+  // reported it as "System health" and "Global SEO/GEO health score", which
+  // overstated what it measures.
+  const passRate = recentRunsCount > 0 ? Math.round((successfulRunsCount / recentRunsCount) * 100) : 100;
 
-  findings.push(`Weekly Operational Health: ${healthScore}% pass rate across ${recentRunsCount} automated skill executions.`);
-  findings.push(`Directory Citations: ${activeBacklinks} verified active contractor listings.`);
+  findings.push(
+    `Clean runs: ${passRate}% of the last ${recentRunsCount} automated runs finished without reporting a problem.`
+  );
+  findings.push(`Directory Citations: ${activeBacklinks} listings currently marked active.`);
   findings.push(`Monitored Keywords: ${totalTrackedKeywords} search terms actively tracked.`);
   findings.push(`Open Action Items: ${openDirectivesCount} pending directives.`);
 
@@ -60,7 +68,7 @@ export async function runSundayDigestSkill(): Promise<SkillResult> {
     skillName: "Weekly Digest & Action Synthesizer",
     status: "Success",
     durationMs: Date.now() - start,
-    summary: `Compiled weekly executive briefing from live telemetry. System health: ${healthScore}%. ${activeBacklinks} active citations, ${totalTrackedKeywords} tracked terms, ${openDirectivesCount} open directives.`,
+    summary: `${passRate}% of the last ${recentRunsCount} skill runs finished without reporting a problem. ${activeBacklinks} active citations, ${totalTrackedKeywords} tracked terms, ${openDirectivesCount} open directives.`,
     findings,
   };
 

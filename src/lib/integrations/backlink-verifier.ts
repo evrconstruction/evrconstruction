@@ -2,7 +2,7 @@ import axios from "axios";
 import ssrfFilter from "ssrf-req-filter";
 
 export interface VerificationResult {
-  status: "Active" | "Missing" | "Unreachable";
+  status: "Active" | "Missing" | "Unreachable" | "Blocked";
   type: "DoFollow" | "NoFollow";
   httpStatus: number;
   lastVerified: string;
@@ -33,6 +33,21 @@ function isSafePublicUrl(urlString: string): boolean {
 
 function isDirectoryHostname(hostname: string, targetDomain: string): boolean {
   return hostname === targetDomain || hostname.endsWith(`.${targetDomain}`);
+}
+
+/**
+ * Directory sites often answer automated requests with an interstitial
+ * challenge instead of the listing. That response proves the request was
+ * blocked; it is not evidence about whether the listing still exists, so it is
+ * reported as "Blocked" rather than assumed to be active.
+ */
+function looksLikeBotChallenge(html: string): boolean {
+  return (
+    html.includes("Client Challenge") ||
+    html.includes("JavaScript is disabled") ||
+    html.includes("cf-browser-verification") ||
+    html.includes("challenge-platform")
+  );
 }
 
 export async function verifyBacklinkUrl(sourceUrl: string): Promise<VerificationResult> {
@@ -84,11 +99,15 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
 
     if (res.status >= 200 && res.status < 300) {
       const html = typeof res.data === "string" ? res.data : "";
-      const isBotChallenge =
-        html.includes("Client Challenge") ||
-        html.includes("JavaScript is disabled") ||
-        html.includes("cf-browser-verification") ||
-        html.includes("challenge-platform");
+
+      if (looksLikeBotChallenge(html)) {
+        return {
+          status: "Blocked",
+          type: directoryLinkType(isYelp, isBbb, isHouzz),
+          httpStatus: res.status,
+          lastVerified: today,
+        };
+      }
 
       const hasBrand =
         html.toLowerCase().includes("evr construction") ||
@@ -105,10 +124,8 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
         isBbb ||
         isHouzz;
 
-      const isActive = hasBrand || (isBotChallenge && isKnownDirectory);
-
       return {
-        status: isActive ? "Active" : "Missing",
+        status: hasBrand ? "Active" : "Missing",
         type: isNoFollow ? "NoFollow" : "DoFollow",
         httpStatus: res.status,
         lastVerified: today,
@@ -116,10 +133,11 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
     }
 
     if (res.status === 403 && isKnownDirectory) {
-      // Known high-authority anti-bot directory listings returning 403 Forbidden (BBB, Yelp, Houzz)
+      // The directory refused the request. The listing was never served, so its
+      // state is unknown — this is not evidence that it is active.
       return {
-        status: "Active",
-        type: isNoFollowDirectory(isYelp, isBbb, isHouzz) ? "NoFollow" : "DoFollow",
+        status: "Blocked",
+        type: directoryLinkType(isYelp, isBbb, isHouzz),
         httpStatus: res.status,
         lastVerified: today,
       };
@@ -153,6 +171,7 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
   }
 }
 
-function isNoFollowDirectory(isYelp: boolean, isBbb: boolean, isHouzz: boolean): boolean {
-  return isYelp || isBbb || isHouzz;
+/** Link type used when a known directory cannot be read to inspect the anchor. */
+function directoryLinkType(isYelp: boolean, isBbb: boolean, isHouzz: boolean): "DoFollow" | "NoFollow" {
+  return isYelp || isBbb || isHouzz ? "NoFollow" : "DoFollow";
 }

@@ -52,11 +52,11 @@ export async function runThursdayGeoAioSkill(): Promise<SkillResult> {
     // Generate directive for the top missing markets
     const targetCity = missingAreas[0];
     directives.push({
-      id: `dir-geo-${Date.now()}`,
+      id: `dir-geo-missing-city-${targetCity.toLowerCase().replace(/[^a-z0-9]/g, "-")}`,
       skillId: "skill-thursday",
-      title: `Publish Project Work in ${targetCity}`,
-      description: `${targetCity} is a primary target market in East Tennessee with 0 portfolio posts in Firestore. Tagging a project post in ${targetCity} strengthens AI and local search citation authority.`,
-      impact: `Expands local search footprint to ${targetCity}, TN`,
+      title: `Publish project work in ${targetCity}`,
+      description: `${targetCity} is an advertised service area with no portfolio post naming it. A project post tagged with the location gives the city a page that can rank for local searches and gives Google a reason to associate the business with it.`,
+      impact: `Adds local coverage for ${targetCity}, TN`,
       priority: "High",
       category: "AIO_GEO",
       actionLabel: "Create Post",
@@ -65,7 +65,9 @@ export async function runThursdayGeoAioSkill(): Promise<SkillResult> {
       createdAt: new Date().toISOString(),
     });
   } else {
-    findings.push("Complete Coverage: All 12 East Tennessee service municipalities have active portfolio representations.");
+    findings.push(
+      `Complete coverage: all ${serviceAreas.length} advertised service areas have at least one portfolio post naming them.`
+    );
   }
 
   const runLog: AgentRunLog = {
