@@ -52,10 +52,10 @@ export const SKILLS_CONFIG: AgentSkill[] = [
   },
   {
     id: "skill-thursday",
-    name: "AIO & Local GEO Optimizer",
+    name: "Local Coverage & Content Drafts",
     day: "Thursday",
     category: "AIO_GEO",
-    description: "Evaluates Generative Engine Optimization readiness across 12 East Tennessee service areas.",
+    description: "Checks which advertised service areas have published project work, and uses Gemini to draft a reusable posting brief for each city that has none.",
     status: "Idle",
     findingsCount: 0,
   },
