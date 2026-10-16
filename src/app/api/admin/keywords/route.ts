@@ -80,6 +80,7 @@ export async function POST(request: Request) {
         clicks: 0,
         impressions: 0,
         ctr: "--",
+        confidence: "none",
       },
     });
   } catch (err: unknown) {

@@ -5,7 +5,10 @@ import {
   detectCity,
   isBrandQuery,
 } from "@/lib/seo-agent/keyword-opportunities";
-import type { GSCKeywordItem } from "@/lib/integrations/google-search-console";
+import {
+  rankConfidence,
+  type GSCKeywordItem,
+} from "@/lib/integrations/google-search-console";
 
 /**
  * Built from the real 28-day Search Console data for evrconstructions.com plus
@@ -29,6 +32,7 @@ const reportedQuery = (
   clicks,
   impressions,
   ctr: `${ctrPercent.toFixed(1)}%`,
+  confidence: rankConfidence(impressions),
 });
 
 /** A tracked target Google never reported, i.e. no impressions. */
@@ -43,6 +47,7 @@ const trackedTarget = (keyword: string): GSCKeywordItem => ({
   clicks: 0,
   impressions: 0,
   ctr: "--",
+  confidence: "none",
 });
 
 const REAL_DATA: GSCKeywordItem[] = [

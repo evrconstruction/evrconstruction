@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import type { KeywordItem } from "@/app/api/admin/keywords/route";
 import { IndexCoveragePanel } from "@/components/admin/IndexCoveragePanel";
+import { UntrackedQueriesPanel } from "@/components/admin/UntrackedQueriesPanel";
+import type { UntrackedQuery } from "@/lib/integrations/google-search-console";
 import { SERVICE_AREA_TAGS } from "@/lib/site";
 
 interface KeywordsResponse {
@@ -15,6 +17,7 @@ interface KeywordsResponse {
     totalImpressions?: number;
   };
   keywords: KeywordItem[];
+  untrackedQueries?: UntrackedQuery[];
 }
 
 interface AiSuggestion {
@@ -42,6 +45,8 @@ export default function KeywordsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [untracked, setUntracked] = useState<UntrackedQuery[]>([]);
+  const [trackingQuery, setTrackingQuery] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -51,6 +56,7 @@ export default function KeywordsPage() {
         if (isMounted) {
           setData(json);
           setKeywordsList(json.keywords || []);
+          setUntracked(json.untrackedQueries || []);
           setLoading(false);
         }
       })
@@ -63,6 +69,44 @@ export default function KeywordsPage() {
       isMounted = false;
     };
   }, []);
+
+  /**
+   * Adopt a query Google already reports as a tracked target. The row leaves
+   * this panel because it is no longer untracked, not because it was hidden.
+   */
+  async function handleTrackQuery(query: string) {
+    if (trackingQuery !== null) return;
+
+    setTrackingQuery(query);
+    try {
+      const res = await fetch("/api/admin/keywords", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          keyword: query,
+          category: "General",
+          targetLocation: "Knoxville, TN",
+        }),
+      });
+
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        setRemoveError(body?.error ?? "Could not track that query.");
+        return;
+      }
+
+      const result = await res.json();
+      if (result.keyword) {
+        setKeywordsList((prev) => [result.keyword, ...prev]);
+      }
+      setUntracked((prev) => prev.filter((item) => item.query !== query));
+    } catch (err) {
+      console.error("Failed to track query:", err);
+      setRemoveError("Could not reach the server to track that query.");
+    } finally {
+      setTrackingQuery(null);
+    }
+  }
 
   async function handleAddKeyword(e: React.FormEvent) {
     e.preventDefault();
@@ -287,6 +331,14 @@ export default function KeywordsPage() {
           it agrees with the canonical each page declares. */}
       <IndexCoveragePanel />
 
+      {/* Real searches Google already serves this site for. Offered before the
+          table because these are better targets than invented long-tails. */}
+      <UntrackedQueriesPanel
+        queries={untracked}
+        onTrack={handleTrackQuery}
+        trackingQuery={trackingQuery}
+      />
+
       {/* Keywords Table Container */}
       <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
         {removeError && (
@@ -396,9 +448,24 @@ export default function KeywordsPage() {
 
                     <td className="px-6 py-4">
                       {isRanked ? (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200/60 px-2.5 py-1 font-mono font-bold text-emerald-700 text-xs">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 font-mono text-xs font-bold ${
+                            item.confidence === "solid"
+                              ? "border-emerald-200/60 bg-emerald-50 text-emerald-700"
+                              : "border-slate-200 bg-slate-50 text-slate-500"
+                          }`}
+                          title={
+                            item.confidence === "solid"
+                              ? `Average position across ${item.volume} impressions in 28 days`
+                              : `Only ${item.volume} impression${
+                                  item.volume === 1 ? "" : "s"
+                                } in 28 days — too few to read as a ranking`
+                          }
+                        >
                           <span>#{item.position}</span>
-                          {item.position <= 3 && <span className="text-amber-500">★</span>}
+                          {item.confidence === "solid" && item.position <= 3 && (
+                            <span className="text-amber-500">★</span>
+                          )}
                         </span>
                       ) : (
                         <span className="inline-block rounded-md bg-slate-100 px-2.5 py-1 font-mono text-slate-400 text-xs">
@@ -435,6 +502,12 @@ export default function KeywordsPage() {
                       >
                         {item.trend}
                       </span>
+                      {isRanked && item.confidence === "thin" && (
+                        <p className="mt-0.5 text-[10px] font-medium text-amber-600">
+                          {item.volume} impression{item.volume === 1 ? "" : "s"} —
+                          too few to read as a ranking
+                        </p>
+                      )}
                     </td>
 
                     <td className="px-6 py-4 text-right">
