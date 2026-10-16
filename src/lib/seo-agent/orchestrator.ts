@@ -15,6 +15,7 @@ import { runSundayDigestSkill } from "./skills/sunday-digest";
 import { addNotification } from "@/lib/notifications";
 import { adminDb } from "@/lib/firebase-admin";
 import { acquireLock, releaseLock } from "@/lib/rate-limit";
+import { SKILL_NAMES } from "./skill-names";
 
 /** True while a full-skill run is in progress, so nested calls do not double-run. */
 const AGENT_LOCK_NAME = "seo-agent-run";
@@ -25,7 +26,7 @@ const AGENT_LOCK_TTL_MS = 5 * 60 * 1000;
 export const SKILLS_CONFIG: AgentSkill[] = [
   {
     id: "skill-monday",
-    name: "Keywords & Ranking Tracker",
+    name: SKILL_NAMES["skill-monday"],
     day: "Monday",
     category: "Keywords",
     description: "Reviews the queries Google actually reported and flags page 2–5 terms worth publishing content for.",
@@ -34,16 +35,16 @@ export const SKILLS_CONFIG: AgentSkill[] = [
   },
   {
     id: "skill-tuesday",
-    name: "48h Citation & Backlink Verifier",
+    name: SKILL_NAMES["skill-tuesday"],
     day: "Tuesday",
     category: "Citations",
-    description: "Verifies contractor directory listings (Chamber, BBB, TN Registry) and crawls for active backlink status.",
+    description: "Verifies every tracked directory listing and crawls each one for live backlink status.",
     status: "Idle",
     findingsCount: 0,
   },
   {
     id: "skill-wednesday",
-    name: "Technical & On-Page Schema Auditor",
+    name: SKILL_NAMES["skill-wednesday"],
     day: "Wednesday",
     category: "Technical",
     description: "Audits the live public routes for HTTP failures and inspects the homepage's structured data.",
@@ -52,7 +53,7 @@ export const SKILLS_CONFIG: AgentSkill[] = [
   },
   {
     id: "skill-thursday",
-    name: "Local Coverage & Content Drafts",
+    name: SKILL_NAMES["skill-thursday"],
     day: "Thursday",
     category: "AIO_GEO",
     description: "Checks which advertised service areas have published project work, and uses Gemini to draft a reusable posting brief for each city that has none.",
@@ -61,7 +62,7 @@ export const SKILLS_CONFIG: AgentSkill[] = [
   },
   {
     id: "skill-friday",
-    name: "Conversion & Traffic Synthesizer",
+    name: SKILL_NAMES["skill-friday"],
     day: "Friday",
     category: "Conversions",
     description: "Synthesizes GA4 visitor sessions, click-to-call taps, and contact form leads.",
@@ -70,7 +71,7 @@ export const SKILLS_CONFIG: AgentSkill[] = [
   },
   {
     id: "skill-saturday",
-    name: "Project Post Geo-Enhancer",
+    name: SKILL_NAMES["skill-saturday"],
     day: "Saturday",
     category: "Posts",
     description: "Scans project posts for localized East TN keywords, alt tag descriptions, and photo tags.",
@@ -79,7 +80,7 @@ export const SKILLS_CONFIG: AgentSkill[] = [
   },
   {
     id: "skill-sunday",
-    name: "Weekly Digest & Strategy Executive",
+    name: SKILL_NAMES["skill-sunday"],
     day: "Sunday",
     category: "Digest",
     description: "Compiles weekly audit findings into an executive briefing and updates high-priority directives.",
@@ -137,8 +138,8 @@ async function getPersistedConfig(): Promise<AgentConfig> {
 }
 
 /**
- * Load directives and recent runs from Firestore into the in-memory store, once
- * per instance.
+ * Load directives, recent runs and per-skill status from Firestore into the
+ * in-memory store, once per instance.
  *
  * This has to happen before new directives are de-duplicated. The store lives in
  * a module-level global, so a freshly started Cloud Run instance begins empty;
@@ -167,10 +168,47 @@ async function hydrateStore(store: AgentStore): Promise<void> {
       ...(d.data() as Omit<AgentRunLog, "id">),
     }));
 
+    store.skills = applyRunHistory(store.skills, store.recentRuns);
+
     store.hydrated = true;
   } catch (err) {
     console.warn("Could not hydrate the agent store from Firestore:", err);
   }
+}
+
+/**
+ * Rebuild each skill card from the stored run history.
+ *
+ * `runSkill` only updates these in memory, and the store lives in a module-level
+ * global — so a freshly started Cloud Run instance begins with the seed array and
+ * every skill reads "Idle" with no last-run time immediately after a real run.
+ * The most recent run per skill is the authoritative state.
+ *
+ * `findingsCount` is read from the run's own findings list, which is the same
+ * value `runSkill` records, so a skill's numbers do not change across a cold
+ * start.
+ */
+function applyRunHistory(skills: AgentSkill[], runs: AgentRunLog[]): AgentSkill[] {
+  const latestBySkill = new Map<string, AgentRunLog>();
+
+  for (const run of runs) {
+    // `recentRuns` is newest-first, so the first run seen for a skill is its latest.
+    if (!latestBySkill.has(run.skillId)) {
+      latestBySkill.set(run.skillId, run);
+    }
+  }
+
+  return skills.map((skill) => {
+    const latest = latestBySkill.get(skill.id);
+    if (!latest) return skill;
+
+    return {
+      ...skill,
+      lastRun: latest.timestamp,
+      status: latest.status === "Success" ? "Passed" : "Action Needed",
+      findingsCount: latest.findings?.length ?? 0,
+    };
+  });
 }
 
 export async function getSeoAgentDashboardData(): Promise<SeoAgentDashboardData> {
@@ -287,7 +325,7 @@ export async function runSkill(skillId: string): Promise<{ success: boolean; log
         ...store.skills[skillIndex],
         lastRun: log.timestamp,
         status: log.status === "Success" ? "Passed" : "Action Needed",
-        findingsCount: newDirectives.length,
+        findingsCount: log.findings.length,
       };
     }
 
@@ -342,7 +380,12 @@ export async function runSkill(skillId: string): Promise<{ success: boolean; log
 
 export async function runAllSkills(): Promise<{ success: boolean; totalRuns: number; logs: AgentRunLog[] }> {
   const store = getStore();
-  if (!store.config.autonomousActive) {
+  const config = await getPersistedConfig();
+
+  // Read the persisted config before checking the kill switch. On a fresh instance
+  // the in-memory store still holds the default (active), so testing that directly
+  // would let a paused agent start and rely on runSkill to throw further down.
+  if (!config.autonomousActive) {
     throw new Error("Cannot run skills while autonomous engine is paused (Kill Switch active).");
   }
 

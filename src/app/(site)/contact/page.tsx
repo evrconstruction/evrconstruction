@@ -81,7 +81,7 @@ export default function ContactPage() {
               </a>
             </div>
             <p className="mt-4 text-xs leading-5 text-muted">
-              Se habla español — llamenos y con gusto le atendemos.
+              Se habla español — llámenos y con gusto le atendemos.
             </p>
           </div>
 

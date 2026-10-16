@@ -13,11 +13,6 @@ interface KeywordsResponse {
     totalClicks?: number;
     totalImpressions?: number;
   };
-  changes: {
-    improved: number;
-    declined: number;
-    stable: number;
-  };
   keywords: KeywordItem[];
 }
 
@@ -45,6 +40,7 @@ export default function KeywordsPage() {
   const [selectedLocation, setSelectedLocation] = useState("Knoxville, TN");
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [removeError, setRemoveError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -99,15 +95,25 @@ export default function KeywordsPage() {
   }
 
   async function handleRemoveKeyword(id: string) {
+    setRemoveError(null);
     try {
       const res = await fetch(`/api/admin/keywords?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
-      if (res.ok) {
-        setKeywordsList((prev) => prev.filter((k) => k.id !== id));
+
+      // Drop the row only once the server confirms it deleted a document.
+      // Removing it on any success response is what let rows that were never
+      // stored disappear from the table and then return on the next load.
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        setRemoveError(body?.error ?? "Could not remove that keyword.");
+        return;
       }
+
+      setKeywordsList((prev) => prev.filter((k) => k.id !== id));
     } catch (err) {
       console.error("Failed to remove keyword:", err);
+      setRemoveError("Could not reach the server to remove that keyword.");
     }
   }
 
@@ -278,6 +284,19 @@ export default function KeywordsPage() {
 
       {/* Keywords Table Container */}
       <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+        {removeError && (
+          <div className="flex items-start justify-between gap-4 border-b border-rose-200 bg-rose-50 px-5 py-3">
+            <p className="text-xs font-medium text-rose-700">{removeError}</p>
+            <button
+              type="button"
+              onClick={() => setRemoveError(null)}
+              className="shrink-0 cursor-pointer text-xs font-semibold text-rose-700 hover:text-rose-900"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Table Filter Tabs & Search Bar */}
         <div className="p-5 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-2 flex-wrap">
@@ -414,13 +433,22 @@ export default function KeywordsPage() {
                     </td>
 
                     <td className="px-6 py-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveKeyword(item.id)}
-                        className="text-xs font-semibold text-rose-600 hover:text-rose-800 transition-colors cursor-pointer"
-                      >
-                        Remove
-                      </button>
+                      {item.source === "tracked" ? (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveKeyword(item.id)}
+                          className="text-xs font-semibold text-rose-600 hover:text-rose-800 transition-colors cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      ) : (
+                        <span
+                          className="text-[11px] font-medium text-slate-400"
+                          title="Google reported this query. Add it as a target keyword to manage it."
+                        >
+                          Google-reported
+                        </span>
+                      )}
                     </td>
                   </tr>
                 );

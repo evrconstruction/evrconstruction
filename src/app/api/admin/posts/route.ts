@@ -1,62 +1,14 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import { adminDb, adminStorage } from "@/lib/firebase-admin";
-import { ProjectPost } from "@/lib/posts-store";
+import {
+  POST_IMAGE_MAX_BYTES,
+  POST_IMAGE_MIME_TYPES,
+  type ProjectPost,
+} from "@/lib/posts";
 import { verifyAdminSession } from "@/lib/auth-guard";
-import { SERVICES } from "@/lib/services";
+import { resolveStorageSrc } from "@/lib/storage-src";
 
 const POSTS_COLLECTION = "posts";
-
-/**
- * Converts a Firestore `src` value into a URL the browser can load.
- *
- * Firestore stores either:
- *   - A raw storage path: "posts/deck-4.jpg"
- *   - A Firebase Storage URL from a previous getDownloadURL call:
- *     "https://firebasestorage.googleapis.com/v0/b/.../o/posts%2Fdeck-4.jpg?alt=media&token=..."
- *
- * Because App Check is enforced on the bucket, direct Firebase Storage
- * URLs return 401 in the browser. We route everything through our own
- * image proxy at /api/images/[...path] which uses the Admin SDK.
- */
-function resolveStorageSrc(src: string): string {
-  if (!src) return "/images/hero.jpg";
-
-  // Already a proxy URL
-  if (src.startsWith("/api/images/")) return src;
-
-  // Firebase Storage URL → extract the storage path
-  if (src.includes("firebasestorage.googleapis.com")) {
-    try {
-      const url = new URL(src);
-      const match = url.pathname.match(/\/o\/([^?]+)/);
-      if (match?.[1]) {
-        const storagePath = decodeURIComponent(match[1]);
-        if (storagePath.startsWith("posts/")) {
-          return `/api/images/${storagePath}`;
-        }
-      }
-    } catch {
-      // Fall through to path-based resolution
-    }
-  }
-
-  // Raw storage path (e.g. "posts/deck-4.jpg")
-  if (!src.startsWith("http://") && !src.startsWith("https://") && !src.startsWith("data:")) {
-    if (src.startsWith("/images/") || src.startsWith("images/")) {
-      return src.startsWith("/") ? src : `/${src}`;
-    }
-    const clean = src.startsWith("/") ? src.slice(1) : src;
-    if (clean.startsWith("posts/")) {
-      return `/api/images/${clean}`;
-    }
-    // Legacy path without posts/ prefix
-    return `/api/images/posts/${clean}`;
-  }
-
-  // Any other URL (unlikely) — pass through
-  return src;
-}
 
 export async function GET() {
   try {
@@ -132,14 +84,14 @@ export async function POST(request: Request) {
           const base64Data = matches[2];
           const buffer = Buffer.from(base64Data, "base64");
 
-          const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
-          const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
-
-          if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
+          if (!POST_IMAGE_MIME_TYPES.includes(mimeType)) {
             return NextResponse.json({ error: "Unsupported image format" }, { status: 400 });
           }
-          if (buffer.length > MAX_IMAGE_SIZE_BYTES) {
-            return NextResponse.json({ error: "Image too large (max 10MB)" }, { status: 400 });
+          if (buffer.length > POST_IMAGE_MAX_BYTES) {
+            return NextResponse.json(
+              { error: `Image too large (max ${POST_IMAGE_MAX_BYTES / 1024 / 1024}MB)` },
+              { status: 400 }
+            );
           }
 
           const extension = mimeType.split("/")[1] || "jpg";
@@ -183,20 +135,9 @@ export async function POST(request: Request) {
       src: resolveStorageSrc(newPostData.src),
     };
 
-    // Revalidate public project pages immediately so new posts appear live
-    try {
-      revalidatePath("/projects");
-      revalidatePath("/projects/[slug]", "page");
-      if (category) {
-        const matched = SERVICES.find((s) => s.category === category);
-        if (matched) {
-          revalidatePath(`/projects/${matched.slug}`);
-        }
-      }
-    } catch (revalErr) {
-      console.warn("revalidatePath error on post creation:", revalErr);
-    }
-
+    // No revalidation call belongs here. /projects/[slug] is force-dynamic, so it
+    // renders per request with nothing cached to purge, and /projects is built
+    // from the SERVICES constant and cannot change at runtime.
     return NextResponse.json({ status: "ok", post: savedPost });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Failed to create post.";
@@ -254,14 +195,6 @@ export async function DELETE(request: Request) {
           }
         }
         await docRef.delete();
-      }
-
-      // Revalidate public project pages immediately
-      try {
-        revalidatePath("/projects");
-        revalidatePath("/projects/[slug]", "page");
-      } catch (revalErr) {
-        console.warn("revalidatePath error on post deletion:", revalErr);
       }
     } catch (firestoreErr) {
       console.error("Firestore delete failed for ID:", id, firestoreErr);

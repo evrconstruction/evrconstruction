@@ -1,43 +1,8 @@
 import { describe, it, expect } from "vitest";
-
-function resolveStorageSrc(src: string): string {
-  if (!src) return "/images/hero.jpg";
-
-  // Already a proxy URL
-  if (src.startsWith("/api/images/")) return src;
-
-  // Firebase Storage URL → extract the storage path
-  if (src.includes("firebasestorage.googleapis.com")) {
-    try {
-      const url = new URL(src);
-      const match = url.pathname.match(/\/o\/([^?]+)/);
-      if (match?.[1]) {
-        const storagePath = decodeURIComponent(match[1]);
-        if (storagePath.startsWith("posts/")) {
-          return `/api/images/${storagePath}`;
-        }
-      }
-    } catch {
-      // Fall through to path-based resolution
-    }
-  }
-
-  // Raw storage path (e.g. "posts/deck-4.jpg")
-  if (!src.startsWith("http://") && !src.startsWith("https://") && !src.startsWith("data:")) {
-    if (src.startsWith("/images/") || src.startsWith("images/")) {
-      return src.startsWith("/") ? src : `/${src}`;
-    }
-    const clean = src.startsWith("/") ? src.slice(1) : src;
-    if (clean.startsWith("posts/")) {
-      return `/api/images/${clean}`;
-    }
-    // Legacy path without posts/ prefix
-    return `/api/images/posts/${clean}`;
-  }
-
-  // Any other URL — pass through
-  return src;
-}
+// Imported, never re-declared. An earlier version of this file defined its own
+// copy of the function, so the tests asserted against the clone and could not
+// fail when the real implementation broke.
+import { resolveStorageSrc } from "@/lib/storage-src";
 
 describe("Image Path Resolution Logic", () => {
   it("resolves static public images starting with /images/ without prepending /api/images/posts/", () => {

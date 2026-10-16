@@ -19,38 +19,6 @@ export interface BacklinkItem {
  */
 export type BacklinkStatus = "Active" | "Missing" | "Unreachable" | "Blocked" | "Pending";
 
-export interface OutreachDraft {
-  id: string;
-  targetDomain: string;
-  opportunity: string;
-  suggestedAnchor: string;
-  status: "Draft" | "Sent" | "Accepted";
-}
-
-const INITIAL_VERIFIED_CITATIONS: Omit<BacklinkItem, "id">[] = [
-  {
-    sourceUrl: "https://www.bbb.org/us/tn/knoxville/profile/deck-builder/evr-construction-llc-0533-90046668",
-    title: "Better Business Bureau — EVR Construction LLC (Knoxville, TN)",
-    status: "Pending",
-    type: "NoFollow",
-    lastVerified: "",
-  },
-  {
-    sourceUrl: "https://m.yelp.com/biz/evr-construction-knoxville",
-    title: "Yelp Knoxville — EVR Construction",
-    status: "Pending",
-    type: "NoFollow",
-    lastVerified: "",
-  },
-  {
-    sourceUrl: "https://www.bizapedia.com/tn/evr-construction-llc.html",
-    title: "Bizapedia Tennessee — EVR Construction LLC Company Profile",
-    status: "Pending",
-    type: "DoFollow",
-    lastVerified: "",
-  },
-];
-
 export async function GET() {
   try {
     await verifyAdminSession();
@@ -61,18 +29,11 @@ export async function GET() {
   let backlinksList: BacklinkItem[] = [];
 
   try {
-    let snapshot = await adminDb.collection("backlinks").get();
-
-    // Auto-seed initial real citations if collection is empty
-    if (snapshot.empty) {
-      const batch = adminDb.batch();
-      for (const cit of INITIAL_VERIFIED_CITATIONS) {
-        const ref = adminDb.collection("backlinks").doc();
-        batch.set(ref, cit);
-      }
-      await batch.commit();
-      snapshot = await adminDb.collection("backlinks").get();
-    }
+    // A GET reads. An earlier version seeded a starter list here when the
+    // collection was empty, which meant a read could write, and the list it
+    // restored had gone stale. Listings are added deliberately from the
+    // dashboard, which is the only path that should create them.
+    const snapshot = await adminDb.collection("backlinks").get();
 
     backlinksList = snapshot.docs.map((doc) => {
       const d = doc.data();
@@ -96,23 +57,6 @@ export async function GET() {
   ).length;
   const noFollow = backlinksList.filter((b) => b.type === "NoFollow").length;
 
-  let outreachList: OutreachDraft[] = [];
-  try {
-    const outreachSnap = await adminDb.collection("outreach_drafts").get();
-    outreachList = outreachSnap.docs.map((doc) => {
-      const d = doc.data();
-      return {
-        id: doc.id,
-        targetDomain: d.targetDomain || "",
-        opportunity: d.opportunity || "",
-        suggestedAnchor: d.suggestedAnchor || "",
-        status: d.status || "Draft",
-      };
-    });
-  } catch (err) {
-    console.warn("Firestore fetch error on outreach_drafts:", err);
-  }
-
   return NextResponse.json({
     metrics: {
       total,
@@ -121,7 +65,6 @@ export async function GET() {
       noFollow,
     },
     backlinks: backlinksList,
-    outreach: outreachList,
   });
 }
 

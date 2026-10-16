@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { generatePostGeoEnhancements } from "@/lib/geo-enhancements";
+import { POST_CATEGORIES } from "@/lib/posts";
 
-const POSTS_CATEGORIES = ["Decks", "Gazebos", "Restoration", "Remodeling", "Carpentry", "Patios"] as const;
+const POSTS_CATEGORIES = POST_CATEGORIES;
 
 describe("generatePostGeoEnhancements", () => {
   it("detects Gazebos from pergola and gazebo keywords", () => {
@@ -48,15 +49,30 @@ describe("generatePostGeoEnhancements", () => {
     expect(resultLenoir.locationTag).toBe("Lenoir City, TN");
 
     // Loudon is not in SITE.serviceAreas, so generated alt text must not
-    // advertise it. It falls back to the default area instead.
+    // advertise it. It must not substitute a different city either — naming
+    // Knoxville here would present a guess as a detected location.
     const resultOutsideList = generatePostGeoEnhancements("", "Covered cedar deck built on lakefront property in Loudon TN");
-    expect(resultOutsideList.locationTag).toBe("Knoxville, TN");
+    expect(resultOutsideList.locationTag).toBeNull();
+    expect(resultOutsideList.altText).not.toContain("Loudon");
+    expect(resultOutsideList.suggestedTags).not.toContain("Knoxville, TN");
   });
 
-  it("defaults to Decks and Knoxville, TN when no specific keyword is found", () => {
+  it("returns null rather than a default city when the text names no location", () => {
     const result = generatePostGeoEnhancements("", "Outdoor project completed");
     expect(result.serviceCategory).toBe("Decks");
     expect(POSTS_CATEGORIES).toContain(result.serviceCategory);
-    expect(result.locationTag).toBe("Knoxville, TN");
+    expect(result.locationTag).toBeNull();
+    expect(result.altText).not.toContain("Knoxville");
+    expect(result.suggestedTags).toEqual([
+      "Decks",
+      "EVR Construction LLC",
+      "East Tennessee Carpentry",
+    ]);
+  });
+
+  it("prefers the caller's area hint over the text", () => {
+    const result = generatePostGeoEnhancements("", "Deck rebuild in Maryville", "Farragut, TN");
+    expect(result.locationTag).toBe("Farragut, TN");
+    expect(result.altText).toContain("Farragut, TN");
   });
 });

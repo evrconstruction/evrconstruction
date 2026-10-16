@@ -2,6 +2,7 @@ import { AgentDirective, AgentRunLog } from "../types";
 import { SkillResult } from "./monday-keywords";
 import { adminDb } from "@/lib/firebase-admin";
 import { fetchGA4Analytics, fetchGA4EventCounts } from "@/lib/integrations/google-analytics";
+import { SKILL_NAMES } from "../skill-names";
 
 /** Conversion events fired by the site, read from GA4. */
 const CONVERSION_EVENTS = ["generate_lead", "click_to_call"];
@@ -87,7 +88,7 @@ export async function runFridayConversionsSkill(): Promise<SkillResult> {
     id: `run-${Date.now()}-fri`,
     timestamp: new Date().toISOString(),
     skillId: "skill-friday",
-    skillName: "Conversion & Traffic Synthesizer",
+    skillName: SKILL_NAMES["skill-friday"],
     status: "Success",
     durationMs: Date.now() - start,
     summary:

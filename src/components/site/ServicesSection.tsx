@@ -1,59 +1,49 @@
 import Link from "next/link";
+import { SERVICES, type ServiceSlug } from "@/lib/services";
 
-type Service = {
-  title: string;
-  slug: string;
-  description: string;
-  icon: "deck" | "gazebo" | "restore" | "remodel" | "carpentry" | "patio";
-};
+type IconName = "deck" | "gazebo" | "restore" | "remodel" | "carpentry" | "patio";
 
-const SERVICES: Service[] = [
-  {
-    title: "Decks",
-    slug: "decks",
+/**
+ * The homepage grid needs a blurb and an icon that no other surface uses.
+ * Titles and slugs come from SERVICES instead, so this grid cannot drift from
+ * the project pages, their metadata or the JSON-LD service names. Keying by
+ * ServiceSlug makes a newly added service a compile error until it has both.
+ */
+const PRESENTATION: Record<ServiceSlug, { description: string; icon: IconName }> = {
+  decks: {
     description:
       "Custom wood and composite decks, built to code and made for East Tennessee summers.",
     icon: "deck",
   },
-  {
-    title: "Gazebos",
-    slug: "gazebo",
+  gazebo: {
     description:
       "Freestanding gazebos that turn an open yard into a shaded gathering place.",
     icon: "gazebo",
   },
-  {
-    title: "Deck & Gazebo Restoration",
-    slug: "restoration",
+  restoration: {
     description:
       "Sanding, sealing, and board replacement that bring older structures back to life.",
     icon: "restore",
   },
-  {
-    title: "Remodeling",
-    slug: "remodeling",
+  remodeling: {
     description:
       "Interior and exterior updates, from new trim to a full outdoor-living refresh.",
     icon: "remodel",
   },
-  {
-    title: "Carpentry",
-    slug: "carpentry",
+  carpentry: {
     description:
       "Framing, built-ins, and one-off woodwork. If it can be drawn, we can build it.",
     icon: "carpentry",
   },
-  {
-    title: "Patios & Pergolas",
-    slug: "patios-pergolas",
+  "patios-pergolas": {
     description:
       "Patio covers and pergolas that add shade, structure, and value to your home.",
     icon: "patio",
   },
-];
+};
 
-function ServiceIcon({ icon }: { icon: Service["icon"] }) {
-  const paths: Record<Service["icon"], string> = {
+function ServiceIcon({ icon }: { icon: IconName }) {
+  const paths: Record<IconName, string> = {
     deck: "M3 16h18M5 16v-3m14 3v-3M3 10h18M7 10V7m10 3V7M9 7V4h6v3",
     gazebo: "M12 3l9 7h-4v9h-3v-5h-4v5H7v-9H3l9-7z",
     restore:
@@ -86,27 +76,30 @@ export function ServicesSection() {
           outline without altering the approved design. */}
       <h2 className="sr-only">Our Services</h2>
       <div className="mx-auto grid max-w-7xl gap-x-12 gap-y-14 px-4 text-center sm:px-6 md:grid-cols-2 md:text-left lg:grid-cols-3 lg:px-8">
-        {SERVICES.map((service) => (
-          <article key={service.title} className="group mx-auto flex w-full max-w-sm flex-col items-center gap-4 md:mx-0 md:max-w-none md:items-start">
-            <ServiceIcon icon={service.icon} />
-            <div>
-              <h3 className="font-heading text-base font-semibold text-charcoal transition-colors group-hover:text-amber-dark">
-                <Link href={`/projects/${service.slug}`} className="hover:underline">
-                  {service.title}
+        {SERVICES.map((service) => {
+          const { description, icon } = PRESENTATION[service.slug];
+          return (
+            <article key={service.slug} className="group mx-auto flex w-full max-w-sm flex-col items-center gap-4 md:mx-0 md:max-w-none md:items-start">
+              <ServiceIcon icon={icon} />
+              <div>
+                <h3 className="font-heading text-base font-semibold text-charcoal transition-colors group-hover:text-amber-dark">
+                  <Link href={`/projects/${service.slug}`} className="hover:underline">
+                    {service.title}
+                  </Link>
+                </h3>
+                <p className="mt-1.5 max-w-xs text-sm leading-6 text-muted md:max-w-none">
+                  {description}
+                </p>
+                <Link
+                  href={`/projects/${service.slug}`}
+                  className="mt-3 inline-flex font-heading text-xs font-semibold uppercase tracking-wide text-charcoal underline decoration-amber-brand decoration-2 underline-offset-4 hover:text-amber-dark"
+                >
+                  View {service.title} Projects →
                 </Link>
-              </h3>
-              <p className="mt-1.5 max-w-xs text-sm leading-6 text-muted md:max-w-none">
-                {service.description}
-              </p>
-              <Link
-                href={`/projects/${service.slug}`}
-                className="mt-3 inline-flex font-heading text-xs font-semibold uppercase tracking-wide text-charcoal underline decoration-amber-brand decoration-2 underline-offset-4 hover:text-amber-dark"
-              >
-                View {service.title} Projects →
-              </Link>
-            </div>
-          </article>
-        ))}
+              </div>
+            </article>
+          );
+        })}
       </div>
       <div className="mx-auto mt-14 max-w-7xl px-4 text-center sm:px-6 lg:px-8">
         <Link

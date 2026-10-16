@@ -35,11 +35,8 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Backlinks collection and outreach drafts - admin only
+    // Backlinks collection - admin only
     match /backlinks/{backlinkId} {
-      allow read, write: if isAdmin();
-    }
-    match /outreach_drafts/{draftId} {
       allow read, write: if isAdmin();
     }
 

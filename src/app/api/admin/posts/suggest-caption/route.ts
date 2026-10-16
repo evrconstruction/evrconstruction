@@ -3,9 +3,11 @@ import { adminDb } from "@/lib/firebase-admin";
 import { verifyAdminSession } from "@/lib/auth-guard";
 import { generateJson } from "@/lib/integrations/vertex-ai";
 import { SITE } from "@/lib/site";
+import { POST_CATEGORIES } from "@/lib/posts";
 import { CONTENT_BRIEFS_COLLECTION } from "@/lib/seo-agent/skills/thursday-geo-aio";
 
-const CATEGORIES = ["Decks", "Gazebos", "Restoration", "Remodeling", "Carpentry", "Patios"] as const;
+/** Categories must match the Posts Manager list; derived so they cannot drift. */
+const CATEGORIES = POST_CATEGORIES;
 
 interface CaptionSuggestion {
   caption: string;

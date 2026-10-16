@@ -5,9 +5,10 @@ import { SITE } from "@/lib/site";
 import { SERVICES } from "@/lib/services";
 import { generateJson, VERTEX_MODEL_NAME } from "@/lib/integrations/vertex-ai";
 import type { AiResult } from "@/lib/integrations/vertex-ai";
+import { SKILL_NAMES } from "../skill-names";
 
 const SKILL_ID = "skill-thursday";
-const SKILL_NAME = "Local Coverage & Content Drafts";
+const SKILL_NAME = SKILL_NAMES[SKILL_ID];
 
 /** Collection holding one reusable posting brief per city. */
 export const CONTENT_BRIEFS_COLLECTION = "content_briefs";

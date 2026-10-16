@@ -62,13 +62,14 @@ export async function GET(request: Request) {
 
     const filtered = filter === "all" ? events : events.filter((e) => e.event === filter);
 
-    // Event type counts
-    const counts = {
-      page_view: events.filter((e) => e.event === "page_view").length,
-      user_engagement: events.filter((e) => e.event === "user_engagement").length,
-      click: events.filter((e) => e.event === "click").length,
-      form_submit: events.filter((e) => e.event === "form_submit").length,
-    };
+    // Counts cover whatever event types are actually present rather than a fixed
+    // set of four. Only `form_submit` is ever written to this collection today, so
+    // naming the others produced permanently-zero figures that read as "no
+    // activity" rather than "not measured here".
+    const counts: Record<string, number> = {};
+    for (const item of events) {
+      counts[item.event] = (counts[item.event] ?? 0) + 1;
+    }
 
     return NextResponse.json({
       events: filtered,
@@ -81,50 +82,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       events: [],
       total: 0,
-      counts: { page_view: 0, user_engagement: 0, click: 0, form_submit: 0 },
+      counts: {},
       source: "firestore",
     });
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const { event, label, detail, location, device, page } = body;
-
-    if (!event || !label) {
-      return NextResponse.json({ error: "Event and label required" }, { status: 400 });
-    }
-
-    try {
-      await verifyAdminSession();
-    } catch {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Payload validation
-    if (typeof label !== "string" || label.length > 200) {
-      return NextResponse.json({ error: "Invalid label" }, { status: 400 });
-    }
-    if (detail && (typeof detail !== "string" || detail.length > 1000)) {
-      return NextResponse.json({ error: "Invalid detail" }, { status: 400 });
-    }
-
-    const newEvent: Omit<ActivityEvent, "id" | "timeAgo"> = {
-      event,
-      label,
-      detail: detail || "",
-      location: typeof location === "string" ? location.substring(0, 100) : "East Tennessee",
-      device: typeof device === "string" ? device.substring(0, 50) : "Web Client",
-      page: typeof page === "string" ? page.substring(0, 200) : "/",
-      timestamp: Date.now(),
-    };
-
-    const docRef = await adminDb.collection(ACTIVITY_COLLECTION).add(newEvent);
-
-    return NextResponse.json({ status: "ok", id: docRef.id, event: newEvent });
-  } catch (err) {
-    console.error("Failed to log activity:", err);
-    return NextResponse.json({ error: "Failed to log activity" }, { status: 500 });
   }
 }

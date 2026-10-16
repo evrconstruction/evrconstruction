@@ -17,8 +17,11 @@ const localBusinessJsonLd = {
   email: "contact@evrconstructions.com",
   image: "https://evrconstructions.com/images/hero.jpg",
   priceRange: "$$",
+  // Place rather than City: the list mixes incorporated cities (Knoxville,
+  // Farragut, Maryville) with unincorporated communities (Bearden, Hardin
+  // Valley, Powell, Seymour), so the broader type is true for every entry.
   areaServed: SITE.serviceAreas.map((city) => ({
-    "@type": "City",
+    "@type": "Place",
     name: city,
   })),
   hasOfferCatalog: {

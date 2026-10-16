@@ -13,13 +13,18 @@ const RANGES = [
   { label: "Year", days: 365 },
 ];
 
-const EVENT_FILTER_TABS = [
-  { id: "all", label: "All Events" },
-  { id: "form_submit", label: "Leads & Forms" },
-  { id: "click", label: "Clicks & Calls" },
-  { id: "page_view", label: "Page Views" },
-  { id: "user_engagement", label: "Engagement" },
-];
+/**
+ * Labels and styling for the event types written to `activity_logs`.
+ *
+ * Only `form_submit` is recorded there today. Any other type that turns up still
+ * renders, with a neutral fallback, rather than being silently invisible.
+ */
+const EVENT_META: Record<string, { label: string; color: string }> = {
+  form_submit: { label: "Estimate Form Submissions", color: "bg-amber-50 text-amber-600" },
+  click: { label: "CTA & Phone Clicks", color: "bg-purple-50 text-purple-600" },
+  page_view: { label: "Page Views", color: "bg-blue-50 text-blue-600" },
+  user_engagement: { label: "Active Engagement", color: "bg-emerald-50 text-emerald-600" },
+};
 
 interface AnalyticsData {
   connected: boolean;
@@ -97,12 +102,7 @@ export default function AnalyticsPage() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [activityEvents, setActivityEvents] = useState<ActivityItem[]>([]);
-  const [activityCounts, setActivityCounts] = useState({
-    page_view: 0,
-    user_engagement: 0,
-    click: 0,
-    form_submit: 0,
-  });
+  const [activityCounts, setActivityCounts] = useState<Record<string, number>>({});
   const [activityLoading, setActivityLoading] = useState(true);
 
   useEffect(() => {
@@ -156,11 +156,19 @@ export default function AnalyticsPage() {
     };
   }, [activeFilter]);
 
-  const dynamicEventTypes = [
-    { name: "page_view", label: "Page Views", count: activityCounts.page_view || 0, color: "bg-blue-50 text-blue-600" },
-    { name: "user_engagement", label: "Active Engagement", count: activityCounts.user_engagement || 0, color: "bg-emerald-50 text-emerald-600" },
-    { name: "click", label: "CTA & Phone Clicks", count: activityCounts.click || 0, color: "bg-purple-50 text-purple-600" },
-    { name: "form_submit", label: "Estimate Form Submissions", count: activityCounts.form_submit || 0, color: "bg-amber-50 text-amber-600" },
+  // Built from the event types actually present. The previous fixed list of four
+  // included three types that nothing writes to `activity_logs`, so they read zero
+  // permanently and looked like "no activity" rather than "not measured here".
+  const dynamicEventTypes = Object.entries(activityCounts).map(([name, count]) => ({
+    name,
+    label: EVENT_META[name]?.label ?? name,
+    count,
+    color: EVENT_META[name]?.color ?? "bg-slate-100 text-slate-600",
+  }));
+
+  const eventFilterTabs = [
+    { id: "all", label: "All Events" },
+    ...dynamicEventTypes.map((event) => ({ id: event.name, label: event.label })),
   ];
 
   const timeSeries = data?.timeSeries || [];
@@ -518,7 +526,7 @@ export default function AnalyticsPage() {
 
               {/* Filter Pills */}
               <div className="flex flex-wrap items-center gap-1.5">
-                {EVENT_FILTER_TABS.map((tab) => (
+                {eventFilterTabs.map((tab) => (
                   <button
                     key={tab.id}
                     type="button"
@@ -607,7 +615,7 @@ export default function AnalyticsPage() {
             {filteredEvents.length === 0 && (
               <div className="p-12 text-center text-xs text-slate-400 space-y-1.5">
                 <p className="font-semibold text-slate-600 text-sm">No live activity recorded yet</p>
-                <p className="max-w-md mx-auto">Live user events (contact inquiries, consultation requests, clicks) will appear here in real-time as visitors interact with the site.</p>
+                <p className="max-w-md mx-auto">Consultation requests submitted through the contact form appear here as they arrive. Traffic and call metrics are reported in Google Analytics.</p>
               </div>
             )}
             </>

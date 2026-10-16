@@ -1,6 +1,7 @@
 import { AgentDirective, AgentRunLog } from "../types";
 import { SkillResult } from "./monday-keywords";
 import { SITE } from "@/lib/site";
+import { SKILL_NAMES } from "../skill-names";
 
 const CRITICAL_ROUTES = [
   { path: "/", name: "Homepage" },
@@ -304,7 +305,7 @@ export async function runWednesdayTechnicalSkill(): Promise<SkillResult> {
     id: `run-${Date.now()}-wed`,
     timestamp,
     skillId: "skill-wednesday",
-    skillName: "Technical & On-Page Auditor",
+    skillName: SKILL_NAMES["skill-wednesday"],
     status: failedCount === 0 ? "Success" : "Error",
     durationMs: Date.now() - start,
     summary: `Checked ${CRITICAL_ROUTES.length} public routes (${passedCount} returned HTTP 200) and inspected the homepage structured data.`,

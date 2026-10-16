@@ -2,6 +2,7 @@ import { AgentDirective, AgentRunLog } from "../types";
 import { SkillResult } from "./monday-keywords";
 import { adminDb } from "@/lib/firebase-admin";
 import { verifyBacklinkUrl } from "@/lib/integrations/backlink-verifier";
+import { SKILL_NAMES } from "../skill-names";
 
 const CITATION_DIRECTIVE_PREFIX = "dir-cit-lost-";
 
@@ -75,7 +76,7 @@ export async function runTuesdayCitationsSkill(): Promise<SkillResult> {
     id: `run-${Date.now()}-tue`,
     timestamp: new Date().toISOString(),
     skillId: "skill-tuesday",
-    skillName: "Citation & Backlink Verifier",
+    skillName: SKILL_NAMES["skill-tuesday"],
     status: missingCount === 0 ? "Success" : "Error",
     durationMs: Date.now() - start,
     summary: `Verified ${snapshot.docs.length} monitored citation profiles: ${activeCount} active, ${missingCount} missing, ${unverifiedCount} could not be checked.`,

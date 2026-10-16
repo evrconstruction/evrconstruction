@@ -7,7 +7,15 @@ export const SITE = {
     spanishHref: "tel:+18652756672",
   },
   serviceAreas: [
+    // Knoxville and its surrounding communities first, then the wider region.
+    // These are the only places the business advertises, and every surface that
+    // names a service area — homepage chips, areaServed JSON-LD, the Posts
+    // Manager dropdown, geo detection and the SEO agent's city briefs — derives
+    // from this list.
     "Knoxville",
+    "Farragut",
+    "Bearden",
+    "Hardin Valley",
     "Clinton",
     "Maynardville",
     "Powell",

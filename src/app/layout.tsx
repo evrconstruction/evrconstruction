@@ -30,16 +30,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "./",
   },
-  icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/icon.png", type: "image/png", sizes: "512x512" },
-    ],
-    apple: [
-      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
-    ],
-  },
+  // Icons come from the file conventions in this directory (favicon.ico,
+  // icon.svg, icon.png, apple-icon.png), which emit the same link tags. A
+  // hand-written copy of that list lived here and drifted out of step with them.
   robots: {
     index: true,
     follow: true,

@@ -3,13 +3,16 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ProjectPost } from "@/lib/posts-store";
+import { ProjectPost } from "@/lib/posts";
 import { GSCKeywordItem } from "@/lib/integrations/google-search-console";
+import { resolveStorageSrc } from "@/lib/storage-src";
+import { describeRunHealth } from "@/lib/seo-agent/run-health";
 
 interface OverviewState {
   visitors: string;
   trackedKeywords: number;
-  healthScore: number;
+  /** Share of recent agent runs that finished cleanly; null when unavailable. */
+  healthScore: number | null;
   backlinksCount: number;
   timeSeries: { label: string; value: number; date: string }[];
   topKeywords: GSCKeywordItem[];
@@ -17,16 +20,11 @@ interface OverviewState {
   loading: boolean;
 }
 
-function resolveImageSrc(src: string | undefined): string {
-  if (!src) return "/images/hero.jpg";
-  return src;
-}
-
 export default function AdminOverviewPage() {
   const [state, setState] = useState<OverviewState>({
     visitors: "0",
     trackedKeywords: 0,
-    healthScore: 100,
+    healthScore: null,
     backlinksCount: 0,
     timeSeries: [],
     topKeywords: [],
@@ -59,7 +57,7 @@ export default function AdminOverviewPage() {
           setState({
             visitors: analyticsData?.metrics?.visitors || "0",
             trackedKeywords: keywordsData?.stats?.total || 0,
-            healthScore: seoData?.healthScore || 100,
+            healthScore: seoData?.healthScore ?? null,
             backlinksCount: backlinksData?.metrics?.total || 0,
             timeSeries: analyticsData?.timeSeries || [],
             topKeywords: (keywordsData?.keywords || []).slice(0, 4),
@@ -80,6 +78,7 @@ export default function AdminOverviewPage() {
   }, [dateRange]);
 
   const maxVal = Math.max(...state.timeSeries.map((d) => d.value), 5);
+  const runHealth = describeRunHealth(state.healthScore);
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
@@ -131,22 +130,22 @@ export default function AdminOverviewPage() {
           <p className="mt-1 text-xs text-slate-400">Active Search Rankings</p>
         </div>
 
-        {/* SEO Health */}
+        {/* Agent run health */}
         <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Global SEO Health
+              Agent Clean Runs
             </span>
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-50 text-emerald-600">
+            <span className={`grid h-9 w-9 place-items-center rounded-xl ${runHealth.chip}`}>
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </span>
           </div>
           <p className="mt-4 font-heading text-3xl font-bold text-[#1f2521]">
-            {state.loading ? "..." : `${state.healthScore}%`}
+            {state.loading ? "..." : state.healthScore === null ? "—" : `${state.healthScore}%`}
           </p>
-          <p className="mt-1 text-xs text-emerald-600 font-medium">Optimal Status</p>
+          <p className={`mt-1 text-xs font-medium ${runHealth.text}`}>{runHealth.label}</p>
         </div>
 
         {/* Backlinks */}
@@ -287,7 +286,7 @@ export default function AdminOverviewPage() {
               <div key={post.id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-3 overflow-hidden">
                 <div className="relative h-32 w-full rounded-lg overflow-hidden bg-slate-200 mb-2">
                   <Image
-                    src={resolveImageSrc(post.src)}
+                    src={resolveStorageSrc(post.src)}
                     alt={post.alt || post.caption || "Project photo"}
                     fill
                     unoptimized

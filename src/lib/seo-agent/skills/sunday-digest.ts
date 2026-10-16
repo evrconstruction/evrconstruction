@@ -1,6 +1,7 @@
 import { AgentDirective, AgentRunLog } from "../types";
 import { SkillResult } from "./monday-keywords";
 import { adminDb } from "@/lib/firebase-admin";
+import { SKILL_NAMES } from "../skill-names";
 
 export async function runSundayDigestSkill(): Promise<SkillResult> {
   const start = Date.now();
@@ -65,7 +66,7 @@ export async function runSundayDigestSkill(): Promise<SkillResult> {
     id: `run-${Date.now()}-sun`,
     timestamp: new Date().toISOString(),
     skillId: "skill-sunday",
-    skillName: "Weekly Digest & Action Synthesizer",
+    skillName: SKILL_NAMES["skill-sunday"],
     status: "Success",
     durationMs: Date.now() - start,
     summary: `${passRate}% of the last ${recentRunsCount} skill runs finished without reporting a problem. ${activeBacklinks} active citations, ${totalTrackedKeywords} tracked terms, ${openDirectivesCount} open directives.`,

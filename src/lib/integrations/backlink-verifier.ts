@@ -50,6 +50,63 @@ function looksLikeBotChallenge(html: string): boolean {
   );
 }
 
+/** Hosts that identify a link as pointing back at this business. */
+const BRAND_HOSTNAMES = ["evrconstructions.com", "evrconstruction.com"];
+
+/** `rel` values that tell search engines not to pass ranking credit. */
+const NON_FOLLOWING_REL_TOKENS = ["nofollow", "ugc", "sponsored"];
+
+/**
+ * True when `href` resolves to this business's own site, or a subdomain of it.
+ *
+ * Compared as whole hostnames rather than substrings, so a URL that merely carries
+ * the domain in its path or query string is not mistaken for a backlink.
+ */
+function pointsAtThisSite(href: string): boolean {
+  let hostname: string;
+  try {
+    // Relative links are common on directory pages, so a base is required. They
+    // resolve to the placeholder host and correctly fail the comparison.
+    hostname = new URL(href, "https://relative.invalid").hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+
+  return BRAND_HOSTNAMES.some(
+    (brandHost) => hostname === brandHost || hostname.endsWith(`.${brandHost}`)
+  );
+}
+
+/**
+ * Link type read from the anchor that points back at this site.
+ *
+ * Scanning the whole document for the word "nofollow" — which an earlier version
+ * did — reports NoFollow for any page that merely mentions the term, and the result
+ * is displayed as a verified fact. This reads the `rel` of the actual backlink.
+ *
+ * Returns `null` when the served HTML holds no link to this site. That is not the
+ * same as a nofollow link: directory listings are often rendered by script, so a
+ * page can name the business without the anchor appearing in the response.
+ */
+export function detectBrandLinkRel(html: string): "DoFollow" | "NoFollow" | null {
+  let foundBrandLink = false;
+
+  for (const anchorTag of html.match(/<a\s[^>]*>/gi) ?? []) {
+    const href = /href\s*=\s*["']([^"']*)["']/i.exec(anchorTag)?.[1];
+    if (!href || !pointsAtThisSite(href)) continue;
+
+    foundBrandLink = true;
+
+    const rel = /rel\s*=\s*["']([^"']*)["']/i.exec(anchorTag)?.[1] ?? "";
+    const relTokens = rel.toLowerCase().split(/\s+/);
+    if (NON_FOLLOWING_REL_TOKENS.some((token) => relTokens.includes(token))) {
+      return "NoFollow";
+    }
+  }
+
+  return foundBrandLink ? "DoFollow" : null;
+}
+
 export async function verifyBacklinkUrl(sourceUrl: string): Promise<VerificationResult> {
   const today = new Date().toLocaleDateString("en-US");
 
@@ -116,13 +173,13 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
         html.toLowerCase().includes("evrconstruction.llc") ||
         html.toLowerCase().includes("henry ramirez");
 
+      // Read the link's own rel first; the documented directory policy applies
+      // only when the response carried no anchor to inspect.
+      const brandLinkRel = detectBrandLinkRel(html);
+
       const isNoFollow =
-        html.includes('rel="nofollow"') ||
-        html.includes("nofollow") ||
-        html.includes('rel="ugc"') ||
-        isYelp ||
-        isBbb ||
-        isHouzz;
+        brandLinkRel === "NoFollow" ||
+        (brandLinkRel === null && directoryLinkType(isYelp, isBbb, isHouzz) === "NoFollow");
 
       return {
         status: hasBrand ? "Active" : "Missing",

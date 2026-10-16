@@ -71,8 +71,14 @@ OUTPUT valid JSON only, no prose, in exactly this shape:
 }`;
 }
 
-/** Coerce the model's JSON into the shape the dashboard consumes. */
-function normalize(raw: unknown): KeywordSuggestion[] {
+/**
+ * Coerce the model's JSON into the shape the dashboard consumes.
+ *
+ * Terms already being tracked are dropped here, ahead of the cap. The prompt asks
+ * the model not to repeat them but cannot compel it, and capping first meant a
+ * response that repeated tracked terms came back as two suggestions instead of eight.
+ */
+function normalize(raw: unknown, alreadyTracked: Set<string>): KeywordSuggestion[] {
   const maybe = raw as { suggestions?: unknown };
   const list = Array.isArray(maybe?.suggestions) ? (maybe.suggestions as AiKeywordPayload[]) : [];
 
@@ -86,7 +92,7 @@ function normalize(raw: unknown): KeywordSuggestion[] {
     if (!keyword) continue;
 
     const key = keyword.toLowerCase();
-    if (seen.has(key)) continue;
+    if (seen.has(key) || alreadyTracked.has(key)) continue;
     seen.add(key);
 
     const category =
@@ -168,22 +174,21 @@ export async function POST() {
     );
   }
 
-  const suggestions = normalize(result.data);
+  const trackedSet = new Set(trackedList.map((keyword) => keyword.toLowerCase()));
+  const suggestions = normalize(result.data, trackedSet);
+
   if (suggestions.length === 0) {
     return NextResponse.json(
-      { error: "The model returned no usable suggestions. Try again." },
+      {
+        error:
+          "The model returned no suggestions that are not already being tracked. Try again.",
+      },
       { status: 502 }
     );
   }
 
-  // Drop anything already tracked so every suggestion is actionable.
-  const trackedSet = new Set(trackedList.map((keyword) => keyword.toLowerCase()));
-  const actionable = suggestions.filter(
-    (suggestion) => !trackedSet.has(suggestion.keyword.toLowerCase())
-  );
-
   return NextResponse.json({
-    suggestions: actionable,
+    suggestions,
     model: VERTEX_MODEL_NAME,
     source: result.source,
     consideredQueries: reportedCount,

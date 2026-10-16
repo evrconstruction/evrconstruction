@@ -1,11 +1,16 @@
 import { AgentDirective, AgentRunLog } from "../types";
 import { SkillResult } from "./monday-keywords";
 import { adminDb } from "@/lib/firebase-admin";
+import { SKILL_NAMES } from "../skill-names";
 export { generatePostGeoEnhancements, type GeoTagSuggestion } from "@/lib/geo-enhancements";
 
 export async function runSaturdayPostEnhancerSkill(): Promise<SkillResult> {
   const start = Date.now();
-  const snapshot = await adminDb.collection("posts").get();
+
+  // Published only, matching the filter the public gallery uses. Counting drafts
+  // made the findings claim things about "published posts" that were not true: a
+  // saved draft could decide the percentage in either direction.
+  const snapshot = await adminDb.collection("posts").where("published", "==", true).get();
 
   const findings: string[] = [];
   const directives: AgentDirective[] = [];
@@ -37,7 +42,7 @@ export async function runSaturdayPostEnhancerSkill(): Promise<SkillResult> {
     }
   });
 
-  findings.push(`Total Project Posts: ${snapshot.docs.length} active portfolio items audited in Firestore.`);
+  findings.push(`Total published project posts: ${snapshot.docs.length} audited in Firestore.`);
   findings.push(`Alt-Text & Descriptions: ${completeAltCount} posts have complete descriptive metadata.`);
   if (missingAltCount > 0) {
     findings.push(`Optimization Opportunities: ${missingAltCount} posts can be upgraded with local East TN city tags.`);
@@ -49,10 +54,10 @@ export async function runSaturdayPostEnhancerSkill(): Promise<SkillResult> {
     id: `run-${Date.now()}-sat`,
     timestamp: new Date().toISOString(),
     skillId: "skill-saturday",
-    skillName: "Project Post Geo-Enhancer",
+    skillName: SKILL_NAMES["skill-saturday"],
     status: "Success",
     durationMs: Date.now() - start,
-    summary: `Audited all ${snapshot.docs.length} portfolio posts in Firestore. ${completeAltCount} have descriptive alt text.`,
+    summary: `Audited all ${snapshot.docs.length} published portfolio posts in Firestore. ${completeAltCount} have descriptive alt text.`,
     findings,
   };
 

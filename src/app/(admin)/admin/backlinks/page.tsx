@@ -1,12 +1,33 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { BacklinkItem, OutreachDraft } from "@/app/api/admin/backlinks/route";
+import type {
+  BacklinkItem,
+  BacklinkStatus,
+} from "@/app/api/admin/backlinks/route";
+
+/**
+ * Status → badge styling.
+ *
+ * `Blocked` is deliberately not a success tone: the directory refused the check,
+ * so the listing's state is genuinely unknown. A single fixed colour previously
+ * made every status render as a green success, which hid missing citations.
+ */
+const STATUS_BADGE: Record<BacklinkStatus, string> = {
+  Active: "bg-emerald-50 text-emerald-700",
+  Missing: "bg-rose-50 text-rose-700",
+  Unreachable: "bg-amber-50 text-amber-700",
+  Blocked: "bg-slate-200 text-slate-800",
+  Pending: "bg-slate-100 text-slate-500",
+};
+
+const TYPE_BADGE: Record<BacklinkItem["type"], string> = {
+  DoFollow: "bg-blue-50 text-blue-700",
+  NoFollow: "bg-slate-100 text-slate-600",
+};
 
 export default function BacklinksPage() {
-  const [activeTab, setActiveTab] = useState<"tracked" | "outreach">("tracked");
   const [backlinks, setBacklinks] = useState<BacklinkItem[]>([]);
-  const [outreach, setOutreach] = useState<OutreachDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -20,7 +41,6 @@ export default function BacklinksPage() {
       .then((data) => {
         if (isMounted) {
           setBacklinks(data.backlinks);
-          setOutreach(data.outreach);
           setLoading(false);
         }
       })
@@ -124,45 +144,6 @@ export default function BacklinksPage() {
         </div>
       </div>
 
-      {/* Sub-tabs with Counter Badges */}
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setActiveTab("tracked")}
-          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
-            activeTab === "tracked"
-              ? "bg-[#1f2521] text-white shadow-xs"
-              : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-          }`}
-        >
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-          </svg>
-          <span>Tracked Backlinks</span>
-          <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${activeTab === "tracked" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"}`}>
-            {backlinks.length}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("outreach")}
-          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
-            activeTab === "outreach"
-              ? "bg-[#1f2521] text-white shadow-xs"
-              : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-          }`}
-        >
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-          <span>AI Outreach & Pitch Drafts</span>
-          <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${activeTab === "outreach" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"}`}>
-            {outreach.length}
-          </span>
-        </button>
-      </div>
-
       {/* Top 4 Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs">
@@ -204,15 +185,16 @@ export default function BacklinksPage() {
         </div>
       </div>
 
-      {/* TAB 1: ACTIVE MONITORED BACKLINKS */}
-      {activeTab === "tracked" && (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+      {/* Monitored backlinks */}
+      <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
           <div className="p-6 border-b border-slate-200">
             <h3 className="font-heading text-base font-bold text-slate-900">
               Active Monitored Backlinks
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Automated crawling verifies anchor text, indexability, and HTTP response codes.
+              Each check fetches the page and records its HTTP response, then looks for your
+              business name and reads the link back to your site. Directories that refuse
+              automated access are reported as Blocked rather than assumed live.
             </p>
           </div>
 
@@ -243,13 +225,21 @@ export default function BacklinksPage() {
                     </td>
 
                     <td className="px-6 py-4">
-                      <span className="inline-block rounded-md bg-emerald-50 px-2.5 py-1 font-bold text-emerald-700 text-xs">
+                      <span
+                        className={`inline-block rounded-md px-2.5 py-1 font-bold text-xs ${
+                          STATUS_BADGE[item.status] ?? STATUS_BADGE.Pending
+                        }`}
+                      >
                         {item.status}
                       </span>
                     </td>
 
                     <td className="px-6 py-4">
-                      <span className="inline-block rounded-md bg-blue-50 px-2.5 py-1 font-bold text-blue-700 text-xs">
+                      <span
+                        className={`inline-block rounded-md px-2.5 py-1 font-bold text-xs ${
+                          TYPE_BADGE[item.type] ?? TYPE_BADGE.NoFollow
+                        }`}
+                      >
                         {item.type}
                       </span>
                     </td>
@@ -288,63 +278,7 @@ export default function BacklinksPage() {
               </button>
             </div>
           )}
-        </div>
-      )}
-
-      {/* TAB 2: AI OUTREACH & PITCH DRAFTS */}
-      {activeTab === "outreach" && (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-          <div className="p-6 border-b border-slate-200">
-            <h3 className="font-heading text-base font-bold text-slate-900">
-              AI Outreach & Pitch Drafts
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Targeted Knoxville publications, East Tennessee home improvement blogs, and contractor directories.
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-3.5 font-semibold">Target Domain</th>
-                  <th className="px-6 py-3.5 font-semibold">Pitch Angle & Opportunity</th>
-                  <th className="px-6 py-3.5 font-semibold">Suggested Anchor</th>
-                  <th className="px-6 py-3.5 font-semibold text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {outreach.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-10 text-center text-xs text-slate-400">
-                      No outreach pitch drafts currently queued.
-                    </td>
-                  </tr>
-                ) : (
-                  outreach.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="px-6 py-4 font-bold text-slate-900">
-                        {item.targetDomain}
-                      </td>
-                      <td className="px-6 py-4 text-slate-700 max-w-md">
-                        {item.opportunity}
-                      </td>
-                      <td className="px-6 py-4 font-mono font-semibold text-blue-600">
-                        &quot;{item.suggestedAnchor}&quot;
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className="inline-block rounded-md bg-slate-100 px-2.5 py-1 font-bold text-slate-700 text-xs">
-                          {item.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* Add Backlink Modal */}
       {showAddModal && (
@@ -352,7 +286,8 @@ export default function BacklinksPage() {
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl border border-slate-200">
             <h3 className="font-heading text-lg font-bold text-slate-900">Add Monitored Backlink</h3>
             <p className="text-xs text-slate-500 mt-1">
-              Add a referring URL to monitor active status and indexability.
+              Add a referring URL to monitor its HTTP status and whether the link back to your
+              site is followed.
             </p>
 
             <form onSubmit={handleAddBacklink} className="mt-5 space-y-4">

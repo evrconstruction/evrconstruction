@@ -7,6 +7,12 @@ import {
 
 export interface GSCKeywordItem {
   id: string;
+  /**
+   * Where the row came from. `tracked` rows are targets the owner added and can
+   * be removed; `reported` rows are queries Google returned that were never
+   * added as targets, so they are read-only views of Search Console data.
+   */
+  source: "tracked" | "reported";
   keyword: string;
   lang: string;
   position: number;
@@ -31,11 +37,6 @@ export interface GSCReportResult {
     top50: number;
     totalClicks: number;
     totalImpressions: number;
-  };
-  changes: {
-    improved: number;
-    declined: number;
-    stable: number;
   };
   keywords: GSCKeywordItem[];
 }
@@ -174,6 +175,7 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
     if (gscData) {
       combinedKeywords.push({
         id: tk.id,
+        source: "tracked",
         keyword: tk.keyword,
         lang: "EN",
         position: gscData.position,
@@ -187,6 +189,7 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
     } else {
       combinedKeywords.push({
         id: tk.id,
+        source: "tracked",
         keyword: tk.keyword,
         lang: "EN",
         position: 0,
@@ -204,6 +207,7 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
     if (!claimedQueries.has(query)) {
       combinedKeywords.push({
         id: `gsc-${encodeURIComponent(query)}`,
+        source: "reported",
         keyword: query,
         lang: "EN",
         position: gscData.position,
@@ -240,7 +244,6 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
 
   return {
     stats: { total, top10, top20, top50, totalClicks, totalImpressions },
-    changes: { improved: top10, declined: 0, stable: Math.max(0, indexed.length - top10) },
     keywords: combinedKeywords,
   };
 }

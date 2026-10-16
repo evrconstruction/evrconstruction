@@ -8,6 +8,7 @@ import {
   AgentRunLog,
   SeoAgentDashboardData,
 } from "@/lib/seo-agent/types";
+import { describeRunHealth } from "@/lib/seo-agent/run-health";
 
 const emptySubscribe = () => () => {};
 function useMounted() {
@@ -176,6 +177,8 @@ export default function SeoAgentPage() {
       ? openDirectives
       : openDirectives.filter((d) => d.category === activeCategoryFilter);
 
+  const runHealth = describeRunHealth(data?.healthScore ?? null);
+
   return (
     <div className="space-y-6 w-full pb-12">
       {/* Toast Notification */}
@@ -258,20 +261,20 @@ export default function SeoAgentPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                SEO / GEO Health
+                Agent Clean Runs
               </p>
               <p className="mt-2 font-heading text-3xl font-bold text-slate-900">
-                {loading ? "..." : `${data?.healthScore ?? 100}%`}
+                {loading ? "..." : data ? `${data.healthScore}%` : "—"}
               </p>
             </div>
-            <div className="rounded-lg p-2.5 bg-emerald-50 text-emerald-600">
+            <div className={`rounded-lg p-2.5 ${runHealth.chip}`}>
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
-          <p className="mt-3 text-xs text-emerald-600 font-medium">
-            Optimal East TN Local Indexing
+          <p className={`mt-3 text-xs font-medium ${runHealth.text}`}>
+            {runHealth.label}
           </p>
         </div>
 

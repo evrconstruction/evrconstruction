@@ -1,6 +1,7 @@
 import { AgentDirective, AgentRunLog } from "../types";
 import { fetchSearchConsoleKeywords } from "@/lib/integrations/google-search-console";
 import { analyzeKeywordOpportunities } from "../keyword-opportunities";
+import { SKILL_NAMES } from "../skill-names";
 
 export interface SkillResult {
   runLog: AgentRunLog;
@@ -8,7 +9,7 @@ export interface SkillResult {
 }
 
 const SKILL_ID = "skill-monday";
-const SKILL_NAME = "Keywords & Ranking Tracker";
+const SKILL_NAME = SKILL_NAMES[SKILL_ID];
 
 /**
  * Reads real Search Console performance and raises directives for the terms

@@ -20,6 +20,7 @@ const reportedQuery = (
   ctrPercent: number
 ): GSCKeywordItem => ({
   id: `gsc-${query}`,
+  source: "reported",
   keyword: query,
   lang: "EN",
   position,
@@ -33,6 +34,7 @@ const reportedQuery = (
 /** A tracked target Google never reported, i.e. no impressions. */
 const trackedTarget = (keyword: string): GSCKeywordItem => ({
   id: `t-${keyword}`,
+  source: "tracked",
   keyword,
   lang: "EN",
   position: 0,
@@ -48,12 +50,14 @@ const REAL_DATA: GSCKeywordItem[] = [
   {
     ...reportedQuery("evr construction", 3, 87, 23, 26.4),
     id: "t-evr",
+    source: "tracked",
     keyword: "evrconstructions",
     matchedQuery: "evr construction",
   },
   {
     ...reportedQuery("gazebo builder knoxville tn", 36, 3, 0, 0),
     id: "t-gazebo",
+    source: "tracked",
     keyword: "gazebo knoxville",
     matchedQuery: "gazebo builder knoxville tn",
   },
@@ -98,9 +102,15 @@ describe("detectCity", () => {
     expect(detectCity("deck contractor oak ridge tn")).toBe("Oak Ridge");
   });
 
+  it("finds the Knoxville-area communities the business advertises", () => {
+    expect(detectCity("custom deck builder farragut")).toBe("Farragut");
+    expect(detectCity("deck repair hardin valley tn")).toBe("Hardin Valley");
+    expect(detectCity("screened porch builder bearden")).toBe("Bearden");
+  });
+
   it("returns null for a place the site does not advertise", () => {
     expect(detectCity("evers construction lawrenceburg tn")).toBeNull();
-    expect(detectCity("custom deck builder bearden")).toBeNull();
+    expect(detectCity("custom deck builder nashville tn")).toBeNull();
   });
 });
 

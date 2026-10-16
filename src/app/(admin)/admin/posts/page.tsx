@@ -2,17 +2,20 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import type { ProjectPost } from "@/lib/posts-store";
+import {
+  POST_CATEGORIES,
+  POST_IMAGE_MAX_BYTES,
+  POST_IMAGE_MIME_TYPES,
+  type PostCategory,
+  type ProjectPost,
+} from "@/lib/posts";
 import { generatePostGeoEnhancements } from "@/lib/geo-enhancements";
 import { SERVICE_AREA_TAGS } from "@/lib/site";
 import { useAuth } from "@/lib/firebase/auth-context";
+import { resolveStorageSrc } from "@/lib/storage-src";
 
-const CATEGORIES = ["Decks", "Gazebos", "Restoration", "Remodeling", "Carpentry", "Patios"] as const;
-
-function resolveImageSrc(src: string | undefined): string {
-  if (!src) return "/images/hero.jpg";
-  return src;
-}
+/** Derived from the shared list so the picker and the API cannot disagree. */
+const CATEGORIES = POST_CATEGORIES;
 
 export default function PostsManagerPage() {
   const { user } = useAuth();
@@ -22,101 +25,65 @@ export default function PostsManagerPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   // Form State
-  const [selectedCategory, setSelectedCategory] = useState<typeof CATEGORIES[number]>("Decks");
+  const [selectedCategory, setSelectedCategory] = useState<PostCategory>("Decks");
   const [selectedArea, setSelectedArea] = useState<string>(SERVICE_AREA_TAGS[0]);
   const [caption, setCaption] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [autoDetectFeedback, setAutoDetectFeedback] = useState<string | null>(null);
   const [captionError, setCaptionError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const SEO_SUGGESTIONS: Record<typeof CATEGORIES[number], string[]> = {
-    Decks: [
-      "Custom multi-tier composite deck with black aluminum railings completed in Knoxville, TN by EVR Construction LLC.",
-      "Low-maintenance composite deck installation with integrated stair lighting in Maryville, TN.",
-      "Custom pressure-treated wood deck extension with built-in bench seating in West Knoxville, TN.",
-    ],
-    Gazebos: [
-      "Custom shaded cedar gazebo with architectural shingles and finished ceiling built in Sevierville, TN by EVR Construction.",
-      "Heavy timber outdoor pavilion with tongue-and-groove woodwork in Maryville, TN.",
-      "Custom backyard pergola with heavy cedar posts and decorative rafters in Knoxville, TN.",
-    ],
-    Restoration: [
-      "Full deck restoration, joist reinforcement, and weather-resistant protective staining completed in Knoxville, TN.",
-      "Exterior porch railing repair and structural wood restoration in East Tennessee.",
-      "Deck surface replacement and safety upgrade for residential property in Knoxville, TN.",
-    ],
-    Remodeling: [
-      "Custom residential home remodeling and exterior carpentry expansion completed in West Knoxville, TN.",
-      "Screened-in porch and outdoor living room remodel in Powell, TN.",
-      "Exterior home renovation with custom cedar accents and finished woodwork in Knoxville, TN.",
-    ],
-    Carpentry: [
-      "Custom structural framing, load-bearing header installation, and precision woodwork in Knoxville, TN.",
-      "Architectural exterior trim, custom corbels, and detailed finish carpentry in Oak Ridge, TN.",
-      "Licensed residential framing and heavy timber carpentry completed in Maryville, TN.",
-    ],
-    Patios: [
-      "Covered patio extension with tongue-and-groove cedar ceiling and recessed lighting in Powell, TN.",
-      "Custom outdoor living patio cover with finished posts and decorative brackets in Knoxville, TN.",
-      "Enclosed patio construction with seamless roofline integration in East Tennessee.",
-    ],
-  };
-
   const [analyzingPhoto, setAnalyzingPhoto] = useState(false);
 
   async function handleSuggestCaption() {
-    setCaptionError(null);
-
-    if (imagePreview) {
-      setAnalyzingPhoto(true);
-      try {
-        const res = await fetch("/api/admin/posts/suggest-caption", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            imageBase64: imagePreview,
-            currentCategory: selectedCategory,
-            city: selectedArea.replace(/, TN$/, ""),
-          }),
-        });
-
-        const data = await res.json().catch(() => null);
-
-        if (!res.ok) {
-          setCaptionError(
-            data?.error ||
-              "The caption could not be generated. Write one manually, or try again."
-          );
-          return;
-        }
-
-        if (data?.caption) setCaption(data.caption);
-        if (
-          typeof data?.category === "string" &&
-          CATEGORIES.includes(data.category as (typeof CATEGORIES)[number])
-        ) {
-          setSelectedCategory(data.category as (typeof CATEGORIES)[number]);
-        }
-        return;
-      } catch (err) {
-        console.warn("AI caption request failed:", err);
-        setCaptionError(
-          "The caption could not be generated. Write one manually, or try again."
-        );
-        return;
-      } finally {
-        setAnalyzingPhoto(false);
-      }
+    // The caption is written from the photo, so there is nothing to send without
+    // one. Returning a canned caption here would present a fixed template as AI
+    // output, and those templates named cities — including cities other than the
+    // one selected above. An honest error is the correct result.
+    if (!imagePreview) {
+      setCaptionError("Select a photo first — the caption is written from what the photo shows.");
+      return;
     }
 
-    // No photo selected yet, so there is nothing for the model to look at.
-    const list = SEO_SUGGESTIONS[selectedCategory] || SEO_SUGGESTIONS.Decks;
-    const nextText = list[suggestionIndex % list.length];
-    setCaption(nextText);
-    setSuggestionIndex((prev) => prev + 1);
+    setCaptionError(null);
+    setAnalyzingPhoto(true);
+    try {
+      const res = await fetch("/api/admin/posts/suggest-caption", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageBase64: imagePreview,
+          currentCategory: selectedCategory,
+          city: selectedArea.replace(/, TN$/, ""),
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setCaptionError(
+          data?.error ||
+            "The caption could not be generated. Write one manually, or try again."
+        );
+        return;
+      }
+
+      if (data?.caption) setCaption(data.caption);
+      if (
+        typeof data?.category === "string" &&
+        CATEGORIES.includes(data.category as (typeof CATEGORIES)[number])
+      ) {
+        setSelectedCategory(data.category as (typeof CATEGORIES)[number]);
+      }
+    } catch (err) {
+      console.warn("AI caption request failed:", err);
+      setCaptionError(
+        "The caption could not be generated. Write one manually, or try again."
+      );
+    } finally {
+      setAnalyzingPhoto(false);
+    }
   }
 
   useEffect(() => {
@@ -143,8 +110,8 @@ export default function PostsManagerPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 20 * 1024 * 1024) {
-      setPublishError("Image must be under 20MB");
+    if (file.size > POST_IMAGE_MAX_BYTES) {
+      setPublishError(`Image must be under ${POST_IMAGE_MAX_BYTES / 1024 / 1024}MB`);
       return;
     }
 
@@ -327,7 +294,7 @@ export default function PostsManagerPage() {
                   {/* Photo Container */}
                   <div className="relative aspect-4/3 w-full bg-slate-100 overflow-hidden">
                     <Image
-                      src={resolveImageSrc(post.src)}
+                      src={resolveStorageSrc(post.src)}
                       alt={post.alt || post.caption || "Project photo"}
                       fill
                       unoptimized
@@ -384,7 +351,7 @@ export default function PostsManagerPage() {
                 </label>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept={POST_IMAGE_MIME_TYPES.join(",")}
                   ref={fileInputRef}
                   onChange={handleFileSelect}
                   className="hidden"
@@ -418,7 +385,9 @@ export default function PostsManagerPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     <p className="text-xs font-bold text-slate-700">Click to select photo</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">PNG, JPG, or WebP up to 10MB</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      PNG, JPG, WebP or AVIF up to {POST_IMAGE_MAX_BYTES / 1024 / 1024}MB
+                    </p>
                   </div>
                 )}
               </div>
@@ -472,14 +441,21 @@ export default function PostsManagerPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const enhanced = generatePostGeoEnhancements(caption, caption);
-                        if (
-                          enhanced.serviceCategory &&
-                          CATEGORIES.includes(enhanced.serviceCategory as (typeof CATEGORIES)[number])
-                        ) {
-                          setSelectedCategory(enhanced.serviceCategory as (typeof CATEGORIES)[number]);
-                        }
-                        setAutoDetectFeedback(`✓ Category: ${enhanced.serviceCategory} • Area: ${enhanced.locationTag}`);
+                        // Title is empty because a post only has a caption; passing the
+                        // caption twice implied a second value that does not exist.
+                        const enhanced = generatePostGeoEnhancements("", caption);
+                        setSelectedCategory(enhanced.serviceCategory);
+
+                        // The button promises Geo, so it has to apply what it reports.
+                        // With no city named in the caption the dropdown is left alone
+                        // rather than being reset to a guess.
+                        if (enhanced.locationTag) setSelectedArea(enhanced.locationTag);
+
+                        setAutoDetectFeedback(
+                          enhanced.locationTag
+                            ? `✓ Category: ${enhanced.serviceCategory} • Area: ${enhanced.locationTag}`
+                            : `✓ Category: ${enhanced.serviceCategory} • No area named in the caption — pick one above`
+                        );
                         setTimeout(() => setAutoDetectFeedback(null), 4000);
                       }}
                       className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0284c7] hover:underline cursor-pointer"
@@ -533,7 +509,8 @@ export default function PostsManagerPage() {
               <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  disabled={analyzingPhoto}
+                  disabled={analyzingPhoto || !imagePreview}
+                  title={imagePreview ? undefined : "Select a photo first"}
                   onClick={handleSuggestCaption}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-[#f4b400]/40 bg-[#f4b400]/15 px-3 py-2 text-xs font-bold text-[#8f6804] hover:bg-[#f4b400]/25 hover:border-[#f4b400] transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
                 >
@@ -550,7 +527,7 @@ export default function PostsManagerPage() {
                       <svg className="h-3.5 w-3.5 text-[#8f6804]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
-                      <span>{imagePreview ? "AI Vision Suggest" : "AI Suggest Caption"}</span>
+                      <span>AI Vision Suggest</span>
                     </>
                   )}
                 </button>

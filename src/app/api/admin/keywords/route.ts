@@ -71,6 +71,7 @@ export async function POST(request: Request) {
       status: "ok",
       keyword: {
         id: docRef.id,
+        source: "tracked",
         keyword,
         lang: "EN",
         position: 0,
@@ -102,12 +103,28 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Missing keyword ID" }, { status: 400 });
     }
 
-    // If it's a Firestore document ID, delete it
-    if (!id.startsWith("gsc-")) {
-      await adminDb.collection(TRACKED_KEYWORDS_COLLECTION).doc(id).delete();
+    // Rows Google reported (`gsc-…`) are derived from Search Console rather than
+    // stored here, so a row on screen can have no document behind it. Confirm the
+    // document exists before reporting success, or the dashboard drops a row that
+    // simply reappears on the next load.
+    const docRef = adminDb.collection(TRACKED_KEYWORDS_COLLECTION).doc(id);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return NextResponse.json(
+        {
+          error:
+            "That row is a query Google reported, not a target keyword you added, " +
+            "so there is nothing stored to delete. Add it as a target keyword first " +
+            "if you want to manage it.",
+        },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json({ status: "ok", deleted: true });
+    await docRef.delete();
+
+    return NextResponse.json({ status: "ok", deleted: true, id });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Failed to delete keyword";
     return NextResponse.json({ error: msg }, { status: 500 });

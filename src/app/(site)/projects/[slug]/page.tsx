@@ -2,50 +2,20 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { SERVICES, type ServiceSlug } from "@/lib/services";
+import { SERVICES } from "@/lib/services";
 import { Gallery } from "@/components/site/Gallery";
 import { adminDb } from "@/lib/firebase-admin";
+import { resolveStorageSrc } from "@/lib/storage-src";
 
+// Posts are published from the admin at any time, so a service page is rendered
+// per request. There is deliberately no generateStaticParams: with force-dynamic
+// it prerenders nothing, and its presence suggested this route was static.
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-function resolveStorageSrc(src: string): string {
-  if (!src) return "/images/hero.jpg";
-  if (src.startsWith("/api/images/")) return src;
-  if (src.includes("firebasestorage.googleapis.com")) {
-    try {
-      const url = new URL(src);
-      const match = url.pathname.match(/\/o\/([^?]+)/);
-      if (match?.[1]) {
-        const storagePath = decodeURIComponent(match[1]);
-        if (storagePath.startsWith("posts/")) {
-          return `/api/images/${storagePath}`;
-        }
-      }
-    } catch {
-      // Malformed URL — fall through to path-based resolution below.
-    }
-  }
-  if (!src.startsWith("http://") && !src.startsWith("https://") && !src.startsWith("data:")) {
-    if (src.startsWith("/images/") || src.startsWith("images/")) {
-      return src.startsWith("/") ? src : `/${src}`;
-    }
-    const clean = src.startsWith("/") ? src.slice(1) : src;
-    if (clean.startsWith("posts/")) {
-      return `/api/images/${clean}`;
-    }
-    return `/api/images/posts/${clean}`;
-  }
-  return src;
-}
 
 type ServicePageProps = {
   params: Promise<{ slug: string }>;
 };
-
-export function generateStaticParams(): Array<{ slug: ServiceSlug }> {
-  return SERVICES.map(({ slug }) => ({ slug }));
-}
 
 function getService(slug: string) {
   return SERVICES.find((service) => service.slug === slug);

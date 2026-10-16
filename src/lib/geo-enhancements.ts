@@ -1,9 +1,15 @@
 import { SERVICE_AREA_TAGS } from "@/lib/site";
+import type { PostCategory } from "@/lib/posts";
 
 export interface GeoTagSuggestion {
   altText: string;
-  serviceCategory: string;
-  locationTag: string;
+  serviceCategory: PostCategory;
+  /**
+   * The city named by the text or by the caller's hint, or `null` when neither
+   * named one. There is deliberately no fallback city — inventing one produced
+   * alt text and tags advertising a location that was never detected.
+   */
+  locationTag: string | null;
   suggestedTags: string[];
 }
 
@@ -25,13 +31,24 @@ const EAST_TN_LOCATIONS: ReadonlyArray<{ tag: string; keywords: readonly string[
     keywords: LOCATION_ALIASES[tag] ?? [tag.replace(/, TN$/, "").toLowerCase()],
   }));
 
-export function generatePostGeoEnhancements(title: string, caption: string, areaHint?: string): GeoTagSuggestion {
+/**
+ * Suggests a category, a location, alt text and tags for a project post.
+ *
+ * @param title   Post title. May be empty — posts only require a caption.
+ * @param caption Post caption.
+ * @param areaHint A location chosen by the caller. Takes precedence over anything detected in the text.
+ */
+export function generatePostGeoEnhancements(
+  title: string,
+  caption: string,
+  areaHint?: string
+): GeoTagSuggestion {
   const cleanTitle = title.toLowerCase();
   const cleanCaption = caption.toLowerCase();
 
-  // Category names MUST match the CATEGORIES array in Posts Manager exactly:
-  // ["Decks", "Gazebos", "Restoration", "Remodeling", "Carpentry", "Patios"]
-  let category = "Decks";
+  // Category names come from POST_CATEGORIES — adding one there is the only
+  // change needed to offer it here, in the picker, and from the API.
+  let category: PostCategory = "Decks";
   if (cleanTitle.includes("gazebo") || cleanCaption.includes("gazebo") || cleanCaption.includes("pergola") || cleanCaption.includes("pavilion")) {
     category = "Gazebos";
   } else if (cleanTitle.includes("patio") || cleanCaption.includes("patio") || cleanCaption.includes("porch") || cleanCaption.includes("screened")) {
@@ -54,12 +71,16 @@ export function generatePostGeoEnhancements(title: string, caption: string, area
       }
     }
   }
-  const area = detectedArea || "Knoxville, TN";
+  const area = detectedArea ?? null;
 
   return {
-    altText: `Custom ${category.toLowerCase()} completed by EVR Construction in ${area} — professional carpentry and craftsmanship`,
+    altText: area
+      ? `Custom ${category.toLowerCase()} completed by EVR Construction in ${area} — professional carpentry and craftsmanship`
+      : `Custom ${category.toLowerCase()} completed by EVR Construction — professional carpentry and craftsmanship`,
     serviceCategory: category,
     locationTag: area,
-    suggestedTags: [category, area, "EVR Construction LLC", "East Tennessee Carpentry"],
+    suggestedTags: area
+      ? [category, area, "EVR Construction LLC", "East Tennessee Carpentry"]
+      : [category, "EVR Construction LLC", "East Tennessee Carpentry"],
   };
 }
