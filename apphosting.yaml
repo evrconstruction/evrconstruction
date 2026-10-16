@@ -31,6 +31,10 @@ env:
     secret: CRON_SECRET
   - variable: RESEND_API_KEY
     secret: RESEND_API_KEY
+  - variable: INDEXNOW_KEY
+    secret: INDEXNOW_KEY
+  - variable: CRUX_API_KEY
+    secret: CRUX_API_KEY
   # Sandbox sender until evrconstructions.com is verified in Resend.
   # Switch to "EVR Construction <contact@evrconstructions.com>" afterwards.
   - variable: EMAIL_FROM

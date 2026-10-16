@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import {
+  indexNowKey,
+  indexNowKeyPath,
+  isValidIndexNowKey,
+} from "@/lib/integrations/indexnow";
 
 /**
  * Junk paths that Google discovered (spam referrers / URL artifacts).
@@ -68,6 +73,20 @@ export function proxy(request: NextRequest) {
       statusText: "Gone",
       headers: { "X-Robots-Tag": "noindex" },
     });
+  }
+
+  // IndexNow proves ownership by fetching the key file, and scopes a key to the
+  // directory that file sits in. Serving it from /api/ would authorise only
+  // /api/ URLs, so it is published at the root and rewritten to the handler that
+  // reads it from the environment. Matching the path exactly keeps an unrelated
+  // /something.txt request from being answered with our key.
+  const key = indexNowKey();
+  if (
+    key &&
+    isValidIndexNowKey(key) &&
+    request.nextUrl.pathname === indexNowKeyPath(key)
+  ) {
+    return NextResponse.rewrite(new URL("/api/indexnow/key", request.url));
   }
 
   return NextResponse.next();

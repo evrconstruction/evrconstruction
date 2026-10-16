@@ -32,6 +32,8 @@ flowchart TB
     subgraph IntelligenceLayer ["External Services"]
         GA4["Google Analytics 4<br/>property 552222580"]
         GSC["Search Console<br/>sc-domain:evrconstructions.com"]
+        CrUX["Chrome UX Report<br/>real-user Core Web Vitals"]
+        IndexNow["IndexNow<br/>Bing · Yandex · Seznam · Naver"]
         Crawler["Backlink HTTP verifier"]
         Resend["Resend — lead notification email"]
     end
@@ -51,6 +53,8 @@ flowchart TB
     Crawler --> Firestore
     AdminRoutes --> GA4
     AdminRoutes --> GSC
+    AdminRoutes --> CrUX
+    AdminRoutes --> IndexNow
 ```
 
 **Firestore collections** (13, all named here because a collection that is absent
@@ -102,7 +106,8 @@ httpOnly session cookie. Every `/api/admin/*` handler verifies that session firs
 - **Analytics** — enquiry activity from `activity_logs`, alongside GA4 traffic.
 - **Keywords** — tracked targets merged with live Search Console positions, clicks
   and CTR. Rows Google reports but the owner has not added as targets are marked
-  as such and are read-only.
+  as such and are read-only. A panel below the table lists every published URL with
+  Google's own verdict from the URL Inspection API.
 - **SEO Agent** — the seven-skill orchestrator described below.
 - **Backlinks** — citation registry with a live HTTP verifier that records status,
   bot-challenge responses, and the `rel` of the link back to this site.
@@ -117,7 +122,7 @@ dashboard or by the cron workflow at 08:00 UTC.
 | :--- | :--- | :--- |
 | Mon | Keywords & Ranking Tracker | Scans Search Console queries and tracked targets |
 | Tue | Citation & Backlink Verifier | Crawls every tracked listing for live status |
-| Wed | Technical & On-Page Auditor | Audits schema, metadata and crawlability |
+| Wed | Technical & On-Page Auditor | Audits schema, metadata, crawlability, and real-user Core Web Vitals |
 | Thu | Local Coverage & Content Drafts | Reviews city coverage and writes posting briefs |
 | Fri | Conversion & Traffic Synthesizer | Reads GA4 lead and call events |
 | Sat | Project Post Geo-Enhancer | Audits published posts for alt text and geo detail |
@@ -144,6 +149,20 @@ sequenceDiagram
 Run history is persisted, so the dashboard rebuilds each skill's last status and
 findings count on a cold start rather than showing every skill as idle.
 
+Wednesday is the broadest skill. Beyond schema and metadata it fetches Google's
+own index verdict for every published URL, crawls the site checking titles,
+canonicals, H1s, meta descriptions and internal links, reads real-user Core Web
+Vitals from the Chrome UX Report, and submits the sitemap to IndexNow. Each of
+those four checks is independently guarded, so one integration failing reports a
+finding instead of losing the rest of the audit.
+
+> **IndexNow key file.** Search engines verify ownership by fetching
+> `https://evrconstructions.com/<key>.txt`, which `src/proxy.ts` rewrites to
+> `/api/indexnow/key`. The key is read from the environment, so it can be rotated
+> without a deploy. It is deliberately served from the **root**: the protocol
+> scopes a key to the directory its file sits in, so a key under `/api/` would
+> authorise only `/api/` URLs and every real page would be rejected.
+
 ---
 
 ## 🛠️ Technology Stack
@@ -159,6 +178,8 @@ findings count on a cold start rather than showing every skill as idle.
 | Storage | Cloud Storage for Firebase | `posts/*` |
 | Auth | Firebase Admin SDK | Google sign-in, httpOnly session cookie |
 | AI | Vertex AI `gemini-3.7-flash` | Captioning and keyword discovery |
+| Performance | Chrome UX Report API | Real-user Core Web Vitals (API key, not OAuth) |
+| Indexing | IndexNow | Instant URL submission to Bing and partners |
 | Email | Resend | Lead notifications |
 | Tests | Vitest | `tests/`, run with `npm test` |
 
@@ -182,7 +203,8 @@ evrconstruction/
 │   │   ├── (admin)/admin/      # Overview · Analytics · Keywords
 │   │   │                       # SEO Agent · Backlinks · Posts
 │   │   ├── (site)/             # Home · About · Projects · Contact
-│   │   ├── api/                # contact · session · images · admin/*
+│   │   ├── api/                # contact · session · images · indexnow
+│   │   │                       # · admin/*
 │   │   ├── layout.tsx          # Fonts, metadata, icons, JSON-LD
 │   │   ├── robots.ts           # robots.txt
 │   │   └── sitemap.ts          # sitemap.xml
@@ -190,10 +212,10 @@ evrconstruction/
 │   │   ├── admin/              # Sidebar, topbar, layout shell
 │   │   └── site/               # Header, footer, forms, galleries
 │   ├── lib/
-│   │   ├── integrations/       # GA4, Search Console, Vertex AI,
-│   │   │                       # Google auth, backlink verifier
-│   │   ├── seo-agent/          # Orchestrator, skill names, and the
-│   │   │   └── skills/         # seven daily skills
+│   │   ├── integrations/       # GA4, Search Console, Vertex AI, Google
+│   │   │                       # auth, CrUX, IndexNow, backlink verifier
+│   │   ├── seo-agent/          # Orchestrator, crawl audit, directive
+│   │   │   └── skills/         # lifecycle, and the seven daily skills
 │   │   ├── auth-guard.ts       # Admin session verification
 │   │   ├── firebase-admin.ts   # Admin SDK initialisation
 │   │   ├── posts.ts            # Post type, categories, upload limits
@@ -236,6 +258,15 @@ EMAIL_FROM=onboarding@resend.dev
 
 # Bearer token the daily cron workflow presents to the agent endpoint (secret)
 CRON_SECRET=<secret>
+
+# Google API key restricted to the Chrome UX Report API (secret).
+# This API rejects OAuth, so a key is the only way in.
+CRUX_API_KEY=<secret>
+
+# IndexNow key, published at /<key>.txt to prove host ownership (secret).
+# Not confidential — publishing it is how ownership is proved — but it is read
+# from the environment so it can be rotated without a code change.
+INDEXNOW_KEY=<secret>
 ```
 
 The admin email is **not** an environment variable — `src/lib/auth-guard.ts` pins
@@ -257,6 +288,12 @@ npm run dev          # http://localhost:3000
 ```
 
 Create `.env.local` with the variables above before running the admin suite.
+
+`CRUX_API_KEY` must be a real Google-issued API key (they start `AIza`), created in
+APIs & Services → Credentials and restricted to the Chrome UX Report API.
+`INDEXNOW_KEY` is different — no one issues it; generate one with
+`openssl rand -hex 32`. Any 8–128 characters of `a-z A-Z 0-9 -` will do.
+With either unset the agent reports the gap as a finding rather than failing.
 
 Verification — all four must pass before a change is considered done:
 

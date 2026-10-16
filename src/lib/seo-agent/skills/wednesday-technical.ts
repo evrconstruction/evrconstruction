@@ -6,6 +6,11 @@ import {
   closeStaleDirectives,
   resolveDirectiveIfOpen,
 } from "../directive-lifecycle";
+import { fetchCoreWebVitals } from "@/lib/integrations/crux";
+import { fetchIndexStatusReport } from "@/lib/integrations/google-search-console-index";
+import { submitToIndexNow } from "@/lib/integrations/indexnow";
+import { crawlAndAudit } from "../site-audit";
+import { SITE_URL, publishedUrls } from "@/lib/site-urls";
 
 const CRITICAL_ROUTES = [
   { path: "/", name: "Homepage" },
@@ -22,7 +27,7 @@ const CRITICAL_ROUTES = [
   { path: "/sitemap.xml", name: "XML Sitemap" },
 ];
 
-const BASE_URL = "https://evrconstructions.com";
+const BASE_URL = SITE_URL;
 
 /** Fields a local business schema needs to be useful to search engines. */
 const REQUIRED_BUSINESS_FIELDS = ["name", "telephone", "address", "geo", "url"] as const;
@@ -148,6 +153,8 @@ export async function runWednesdayTechnicalSkill(): Promise<SkillResult> {
   let failedCount = 0;
   let robotsHasSitemap = false;
   let sitemapUrlCount = 0;
+  /** Directives raised by the checks below, so the run status can reflect them. */
+  let newFindingCount = 0;
   let homepageHtml: string | null = null;
   /** Directive ids for routes that answered, so their old reports get closed. */
   const healthyRouteDirectives: string[] = [];
@@ -330,6 +337,175 @@ export async function runWednesdayTechnicalSkill(): Promise<SkillResult> {
     }
   }
 
+  // ---- Real-user performance, as Google actually measured it --------------
+  // CrUX needs a Cloud API key rather than the service account, so this is the
+  // one check that can be legitimately unconfigured. Guarded like the checks
+  // below it: one integration failing must not cost the whole weekly audit.
+  try {
+    const vitals = await fetchCoreWebVitals(BASE_URL);
+
+    if (!vitals.configured) {
+      findings.push(`Core Web Vitals not measured. ${vitals.reason}`);
+    } else if (!vitals.hasData) {
+      findings.push(`Core Web Vitals: ${vitals.reason}`);
+      await resolveDirectiveIfOpen("dir-tech-web-vitals");
+    } else {
+      const periodEnd = vitals.collectionPeriod?.lastDate;
+      findings.push(
+        `Core Web Vitals, real Chrome users${periodEnd ? ` through ${periodEnd}` : ""}: ` +
+          vitals.measurements
+            .map(
+              (m) =>
+                `${m.label} ${m.value}${m.unit} (${m.rating}, ${Math.round(m.goodShare * 100)}% of visits good)`
+            )
+            .join("; ") +
+          "."
+      );
+
+      const failing = vitals.measurements.filter((m) => m.rating !== "good");
+
+      if (failing.length === 0) {
+        await resolveDirectiveIfOpen("dir-tech-web-vitals");
+      } else {
+        newFindingCount++;
+        directives.push({
+          id: "dir-tech-web-vitals",
+          skillId: "skill-wednesday",
+          title: `Core Web Vitals need work: ${failing.map((m) => m.label).join(", ")}`,
+          description:
+            `Google's own real-user data shows ${failing
+              .map((m) => `${m.label} at ${m.value}${m.unit} (${m.rating})`)
+              .join(", ")}. ` +
+            "These are measured at the 75th percentile of real visits, so they reflect what slow connections and mid-range phones experience, not a benchmark run.",
+          impact: "Core Web Vitals feed Google's page experience ranking signal",
+          priority: failing.some((m) => m.rating === "poor") ? "High" : "Medium",
+          category: "Technical",
+          actionLabel: "View Homepage",
+          actionHref: "/",
+          status: "Open",
+          createdAt: timestamp,
+        });
+      }
+    }
+  } catch (err) {
+    findings.push(
+      `Core Web Vitals could not be read: ${err instanceof Error ? err.message : "request failed"}.`
+    );
+  }
+
+  // ---- Index coverage, from Google's own URL Inspection -------------------
+  try {
+    const indexReport = await fetchIndexStatusReport(publishedUrls());
+    const notIndexed = indexReport.pages.filter(
+      (page) => page.verdict === "FAIL" || page.verdict === "NEUTRAL" || page.error
+    );
+
+    findings.push(
+      `Index coverage on ${indexReport.property}: ${indexReport.pages.length - notIndexed.length} of ${indexReport.pages.length} published pages indexed.`
+    );
+
+    if (notIndexed.length === 0) {
+      await resolveDirectiveIfOpen("dir-tech-index-coverage");
+    } else {
+      newFindingCount++;
+      directives.push({
+        id: "dir-tech-index-coverage",
+        skillId: "skill-wednesday",
+        title: `${notIndexed.length} published page${notIndexed.length === 1 ? " is" : "s are"} not indexed`,
+        description:
+          `${notIndexed
+            .map((page) => `${page.path || "/"} (${page.error ?? page.coverageState})`)
+            .join(", ")}. ` +
+          "These pages are in the sitemap but Google is not serving them, so no amount of on-page work reaches searchers until this is resolved.",
+        impact: "Unindexed pages cannot rank or receive any traffic",
+        priority: "High",
+        category: "Technical",
+        actionLabel: "View Keywords",
+        actionHref: "/admin/keywords",
+        status: "Open",
+        createdAt: timestamp,
+      });
+    }
+
+    // A page Google filed under a different canonical is usually a real
+    // duplicate-content problem rather than a reporting quirk.
+    const canonicalDrift = indexReport.pages.filter(
+      (page) => page.canonicalMatches === false
+    );
+    if (canonicalDrift.length > 0) {
+      findings.push(
+        `Canonical disagreement on ${canonicalDrift.map((page) => page.path || "/").join(", ")}.`
+      );
+    }
+  } catch (err) {
+    findings.push(
+      `Index coverage could not be read from Search Console: ${
+        err instanceof Error ? err.message : "request failed"
+      }.`
+    );
+  }
+
+  // ---- Crawl the site the way a crawler would -----------------------------
+  try {
+    const crawl = await crawlAndAudit();
+
+    findings.push(
+      crawl.clean
+        ? `Crawl audit: ${crawl.pages.length} pages checked, no problems found.`
+        : `Crawl audit: ${crawl.pages.length} pages checked, ${crawl.findings.length} problem${crawl.findings.length === 1 ? "" : "s"} found.`
+    );
+
+    for (const finding of crawl.findings) {
+      newFindingCount++;
+      findings.push(`${finding.title}: ${finding.description}`);
+      directives.push({
+        id: finding.id,
+        skillId: "skill-wednesday",
+        title: finding.title,
+        description: finding.description,
+        impact: "Keeps pages crawlable and unambiguous to search engines",
+        priority: finding.priority,
+        category: "Technical",
+        actionLabel: "View Site",
+        actionHref: "/",
+        status: "Open",
+        createdAt: timestamp,
+      });
+    }
+
+    // Findings this audit can raise are a closed set, so anything not raised
+    // this run has been fixed and should stop showing as an open to-do.
+    const raised = crawl.findings.map((finding) => finding.id);
+    const closed = await closeStaleDirectives("dir-audit-", raised);
+    if (closed.length > 0) {
+      findings.push(
+        `Closed ${closed.length} earlier crawl finding${closed.length === 1 ? "" : "s"} that no longer apply.`
+      );
+    }
+  } catch (err) {
+    findings.push(
+      `Crawl audit could not complete: ${err instanceof Error ? err.message : "request failed"}.`
+    );
+  }
+
+  // ---- Tell the search engines whose index we cannot inspect --------------
+  // Google is not part of IndexNow, so this is specifically about Bing, Yandex,
+  // Seznam and Naver.
+  try {
+    const submission = await submitToIndexNow("evrconstructions.com", publishedUrls());
+    if (!submission.configured) {
+      findings.push(`IndexNow not used. ${submission.reason}`);
+    } else {
+      findings.push(
+        `IndexNow: submitted ${submission.submitted} URLs to Bing and its partners (HTTP ${submission.httpStatus}).`
+      );
+    }
+  } catch (err) {
+    findings.push(
+      `IndexNow submission failed: ${err instanceof Error ? err.message : "request failed"}.`
+    );
+  }
+
   const runLog: AgentRunLog = {
     id: `run-${Date.now()}-wed`,
     timestamp,
@@ -337,9 +513,12 @@ export async function runWednesdayTechnicalSkill(): Promise<SkillResult> {
     skillName: SKILL_NAMES["skill-wednesday"],
     // A route failing is a finding about the site, not a failure of this run.
     // Recording it as "Error" made a successful audit read as a broken agent.
-    status: failedCount === 0 ? "Success" : "Warning",
+    status: failedCount === 0 && newFindingCount === 0 ? "Success" : "Warning",
     durationMs: Date.now() - start,
-    summary: `Checked ${CRITICAL_ROUTES.length} public routes (${passedCount} returned HTTP 200) and inspected the homepage structured data.`,
+    summary:
+      `Checked ${CRITICAL_ROUTES.length} public routes (${passedCount} returned HTTP 200), ` +
+      `crawled ${publishedUrls().length} published pages, read real-user Core Web Vitals, ` +
+      `verified index coverage in Search Console and inspected the homepage structured data.`,
     findings,
   };
 
