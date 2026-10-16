@@ -5,6 +5,53 @@ import {
   type KeywordMatchKind,
 } from "@/lib/keyword-matching";
 
+/** Property-scoped Search Console data — analytics, sitemaps — lives under this base. */
+export const WEBMASTERS_API_BASE = "https://www.googleapis.com/webmasters/v3";
+
+/** Read-only access to Search Console properties, sitemaps and index status. */
+export const SEARCH_CONSOLE_SCOPE =
+  "https://www.googleapis.com/auth/webmasters.readonly";
+
+const DEFAULT_SITE_URL = "https://evrconstructions.com";
+
+/**
+ * The Search Console property to report on. Defaults to the live site, but the
+ * admin can point this at another property from Firestore without a deploy.
+ */
+export async function getSearchConsoleSiteUrl(): Promise<string> {
+  try {
+    const configDoc = await adminDb
+      .collection("integrations")
+      .doc("google-search-console")
+      .get();
+
+    const configured = configDoc.exists ? configDoc.data()?.siteUrl : undefined;
+    if (configured) return configured;
+  } catch (err) {
+    console.warn("Failed to read Search Console config:", err);
+  }
+
+  return DEFAULT_SITE_URL;
+}
+
+/**
+ * Google identifies a property either as a URL prefix (`https://example.com/`)
+ * or as a domain property (`sc-domain:example.com`). Which one a site is
+ * registered as is a Search Console setting we cannot read, so the likely forms
+ * are offered in order and the first that answers is used.
+ */
+export function searchConsolePropertyCandidates(siteUrl: string): string[] {
+  const asDomainProperty = siteUrl.startsWith("sc-domain:")
+    ? siteUrl
+    : `sc-domain:${siteUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
+
+  return [
+    asDomainProperty,
+    siteUrl,
+    siteUrl.endsWith("/") ? siteUrl : `${siteUrl}/`,
+  ];
+}
+
 export interface GSCKeywordItem {
   id: string;
   /**
@@ -75,17 +122,7 @@ function describeTrend(
 }
 
 export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
-  let siteUrl = "https://evrconstructions.com";
-
-  try {
-    const configDoc = await adminDb.collection("integrations").doc("google-search-console").get();
-    if (configDoc.exists) {
-      const data = configDoc.data() || {};
-      if (data.siteUrl) siteUrl = data.siteUrl;
-    }
-  } catch (err) {
-    console.warn("Failed to read Search Console config:", err);
-  }
+  const siteUrl = await getSearchConsoleSiteUrl();
 
   // 1. Fetch user-tracked keywords from Firestore
   let trackedKeywords: TrackedKeywordDoc[] = [];
@@ -105,9 +142,7 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
   // 2. Fetch live Search Console analytics
   const gscQueriesMap = new Map<string, { position: number; clicks: number; impressions: number; ctr: number }>();
 
-  const token = await getGoogleAccessToken([
-    "https://www.googleapis.com/auth/webmasters.readonly",
-  ]);
+  const token = await getGoogleAccessToken([SEARCH_CONSOLE_SCOPE]);
 
   if (token) {
     try {
@@ -117,14 +152,8 @@ export async function fetchSearchConsoleKeywords(): Promise<GSCReportResult> {
       const start = startDate.toISOString().split("T")[0];
       const end = endDate.toISOString().split("T")[0];
 
-      const candidates = [
-        siteUrl.startsWith("sc-domain:") ? siteUrl : `sc-domain:${siteUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}`,
-        siteUrl,
-        siteUrl.endsWith("/") ? siteUrl : `${siteUrl}/`,
-      ];
-
-      for (const targetSite of candidates) {
-        const res = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(targetSite)}/searchAnalytics/query`, {
+      for (const targetSite of searchConsolePropertyCandidates(siteUrl)) {
+        const res = await fetch(`${WEBMASTERS_API_BASE}/sites/${encodeURIComponent(targetSite)}/searchAnalytics/query`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,

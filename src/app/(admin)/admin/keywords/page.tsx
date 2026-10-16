@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { KeywordItem } from "@/app/api/admin/keywords/route";
+import { IndexCoveragePanel } from "@/components/admin/IndexCoveragePanel";
 import { SERVICE_AREA_TAGS } from "@/lib/site";
 
 interface KeywordsResponse {
@@ -281,6 +282,10 @@ export default function KeywordsPage() {
           </div>
         </div>
       </div>
+
+      {/* Index coverage: which pages Google has actually indexed, and whether
+          it agrees with the canonical each page declares. */}
+      <IndexCoveragePanel />
 
       {/* Keywords Table Container */}
       <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
