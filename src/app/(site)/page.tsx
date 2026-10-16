@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { SITE, HOME_TITLE, HOME_META_DESCRIPTION } from "@/lib/site";
+import {
+  SITE,
+  HOME_TITLE,
+  HOME_META_DESCRIPTION,
+  TITLE_SUFFIX,
+} from "@/lib/site";
 import { ServicesSection } from "@/components/site/ServicesSection";
 import { NoJobTooBigSection } from "@/components/site/NoJobTooBigSection";
 
@@ -13,7 +18,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     // Open Graph titles are not templated, so the brand belongs here.
-    title: `${HOME_TITLE} | EVR Construction LLC`,
+    title: `${HOME_TITLE}${TITLE_SUFFIX}`,
     description: HOME_META_DESCRIPTION,
     url: "https://evrconstructions.com",
     images: [{ url: "/images/hero.jpg", width: 1200, height: 1600, alt: "EVR Construction deck project" }],

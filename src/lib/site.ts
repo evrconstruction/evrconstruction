@@ -48,10 +48,22 @@ export const SERVICE_AREA_TAGS: readonly string[] = SITE.serviceAreas.map(
 );
 
 /**
- * Homepage title WITHOUT the brand — `src/app/layout.tsx` appends
- * "| EVR Construction LLC" via its title template.
+ * Appended to every page title. Defined once because three places compose a
+ * branded title: the layout's `default` and `template`, and the homepage's
+ * Open Graph title, which Next.js does not run through the template.
  */
-export const HOME_TITLE = "Decks, Gazebos & Carpentry in Knoxville, TN";
+export const TITLE_SUFFIX = " | EVR Construction LLC";
+
+/**
+ * Homepage title WITHOUT the brand — `TITLE_SUFFIX` is appended by the layout's
+ * title template and by the homepage's Open Graph title.
+ *
+ * Google drops the tail of a title longer than roughly 60 characters, and that
+ * tail is where the brand sits, so this plus `TITLE_SUFFIX` has to stay under
+ * that. The budget is the only reason "Gazebos" is absent here: it still
+ * appears in the H1, the meta description and its own service page.
+ */
+export const HOME_TITLE = "Decks & Carpentry in Knoxville, TN";
 
 /**
  * Homepage / site-wide meta description. Names only cities that appear in

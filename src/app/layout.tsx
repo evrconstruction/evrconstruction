@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Rubik, Open_Sans } from "next/font/google";
-import { HOME_TITLE, HOME_META_DESCRIPTION } from "@/lib/site";
+import {
+  HOME_TITLE,
+  HOME_META_DESCRIPTION,
+  TITLE_SUFFIX,
+} from "@/lib/site";
 import "./globals.css";
 
 const rubik = Rubik({
@@ -45,8 +49,8 @@ export const metadata: Metadata = {
     },
   },
   title: {
-    default: `${HOME_TITLE} | EVR Construction LLC`,
-    template: "%s | EVR Construction LLC",
+    default: `${HOME_TITLE}${TITLE_SUFFIX}`,
+    template: `%s${TITLE_SUFFIX}`,
   },
   description: HOME_META_DESCRIPTION,
   openGraph: {
