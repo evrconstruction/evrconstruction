@@ -1,6 +1,8 @@
 # EVR Construction LLC — Web Platform & Autonomous SEO Engine
 
-> Enterprise Next.js 16 SSR platform, customer portal, and autonomous local SEO intelligence engine for **EVR Construction LLC**, serving Knoxville, Farragut, and East Tennessee.
+> Next.js 16 platform for **EVR Construction LLC**, a licensed and insured deck,
+> gazebo, railing and carpentry contractor in Knoxville, Tennessee, serving
+> Knoxville and the surrounding East Tennessee communities.
 
 ---
 
@@ -9,29 +11,29 @@
 ```mermaid
 flowchart TB
     subgraph ClientLayer ["Client Experience"]
-        PublicSite["Public Website (SSR / SSG)\n• Home, About, Services\n• Interactive Gallery\n• Multi-step Consultation Form"]
-        AdminSuite["Admin Operations Portal\n• Overview & Live Telemetry\n• Posts Manager (Cloud Storage)\n• Keywords & Search Console\n• Backlinks & Citation Verifier\n• SEO Agent Autonomous Orchestrator"]
+        PublicSite["Public Website<br/>• Home, About, Projects, Contact<br/>• Category galleries + /projects/[slug]<br/>• Consultation form"]
+        AdminSuite["Admin Portal — single user<br/>• Overview • Analytics • Keywords<br/>• SEO Agent • Backlinks • Posts"]
     end
 
-    subgraph AppLayer ["Next.js 16 App Router (Turbopack)"]
-        SiteRoutes["(site) Public Routes\n/ • /about • /projects • /contact"]
-        AdminRoutes["(admin) Protected Routes\n/admin • /admin/posts • /admin/keywords\n/admin/backlinks • /admin/seo-agent"]
-        APIRoutes["Edge & Node API Routes\n/api/session • /api/admin/*"]
+    subgraph AppLayer ["Next.js 16 App Router"]
+        SiteRoutes["(site) public routes<br/>/ · /about · /projects · /contact"]
+        AdminRoutes["(admin) routes<br/>/admin · /analytics · /keywords<br/>/seo-agent · /backlinks · /posts"]
+        APIRoutes["Route handlers<br/>/api/contact · /api/session<br/>/api/images/[...path] · /api/admin/*"]
     end
 
-    subgraph FirebaseLayer ["Google Cloud & Firebase Backend"]
-        AppHosting["Firebase App Hosting (us-east4)\nContainerized Cloud Run SSR"]
-        FirebaseAuth["Firebase Authentication\nGoogle OAuth Session Management"]
-        Firestore["Cloud Firestore\n• posts • leads • admin_notifications\n• backlinks • activity_logs • tracked_keywords\n• seo_agent_* • mail"]
-        CloudStorage["Firebase Cloud Storage\n/posts/* Portfolio Assets"]
-        VertexAI["Google Cloud Vertex AI\nGemini 3 Vision (gemini-3-flash)"]
+    subgraph FirebaseLayer ["Google Cloud & Firebase"]
+        AppHosting["Firebase App Hosting — us-east4<br/>Cloud Run SSR, Node 24, scales to zero"]
+        FirebaseAuth["Firebase Auth<br/>Google sign-in → httpOnly session cookie"]
+        Firestore["Cloud Firestore"]
+        CloudStorage["Cloud Storage<br/>posts/* portfolio images"]
+        VertexAI["Vertex AI<br/>gemini-3.7-flash"]
     end
 
-    subgraph IntelligenceLayer ["External Intelligence & Telemetry"]
-        GA4["Google Analytics 4 API\n(Live Traffic & User Dimensions)"]
-        GSC["Google Search Console API\n(Live Ranked Queries & CTR)"]
-        Crawler["Live HTTP Verifier\n(DoFollow / NoFollow & Status)"]
-        AgentEngine["Autonomous SEO Agent\n(7 Live Diagnostic Skills)"]
+    subgraph IntelligenceLayer ["External Services"]
+        GA4["Google Analytics 4<br/>property 552222580"]
+        GSC["Search Console<br/>sc-domain:evrconstructions.com"]
+        Crawler["Backlink HTTP verifier"]
+        Resend["Resend — lead notification email"]
     end
 
     PublicSite --> SiteRoutes
@@ -42,79 +44,123 @@ flowchart TB
     APIRoutes --> FirebaseAuth
     APIRoutes --> Firestore
     APIRoutes --> CloudStorage
-    APIRoutes --> AppHosting
     APIRoutes --> VertexAI
+    APIRoutes --> Resend
 
-    AdminRoutes --> AgentEngine
-    AgentEngine --> GA4
-    AgentEngine --> GSC
-    AgentEngine --> Crawler
-    AgentEngine --> Firestore
+    AdminRoutes --> Crawler
+    Crawler --> Firestore
+    AdminRoutes --> GA4
+    AdminRoutes --> GSC
 ```
+
+**Firestore collections** (13, all named here because a collection that is absent
+from this list is one nobody thinks to look in):
+
+| Collection | Holds |
+| :--- | :--- |
+| `posts` | Project posts shown in the public galleries |
+| `leads` | Consultation enquiries submitted through `/contact` |
+| `activity_logs` | Lead events, written by `POST /api/contact` |
+| `tracked_keywords` | Target queries the owner is aiming at |
+| `backlinks` | Monitored citation URLs and their last verification |
+| `admin_notifications` | Alert centre entries |
+| `seo_agent_runs` | One document per skill execution |
+| `seo_agent_directives` | Action items the agent has raised |
+| `agent-config` | SEO agent kill switch and persisted config |
+| `content_briefs` | Posting briefs written by Thursday's skill |
+| `rate_limits` | Firestore-backed request budgets, shared across instances |
+| `locks` | Cross-instance locks for the agent and verifier |
+| `integrations` | Per-provider settings (e.g. the Search Console site URL) |
 
 ---
 
 ## 🚀 Key Features
 
-### 1. High-Performance Public Site & Dynamic Portfolio
-- **SSR & SSG Architecture**: Pre-rendered service portfolio pages with Next.js Turbopack for sub-second load times.
-- **Local SEO & Schema Markup**: Full JSON-LD `LocalBusiness`, `Organization`, and `Service` schema across all 12 East Tennessee service areas.
-- **Real-Time Consultation Pipeline**: Lead capture routes through `POST /api/contact`, permanently persisting inquiries to Firestore `leads` with admin notification and mail queue dispatch.
-- **Connected Project Galleries**: Public service pages dynamically query Firestore `posts` by category, merging client-uploaded builds with the core portfolio via 60-second ISR.
+### 1. Public site and portfolio
 
-### 2. Admin Operations Suite (`/admin`)
-- **Real-Time Telemetry Dashboard**: Zero synthetic data; displays verified visitor counts, consult inquiries, phone link clicks, and cloud health.
-- **Posts Manager (`/admin/posts`)**: Image upload pipeline connected to Firebase Cloud Storage, analyzed with **Google Gemini 3 (`gemini-3-flash`)** on Vertex AI for automated local East TN captioning.
-- **Keywords & Search Console Tracker (`/admin/keywords`)**: Merges tracked target queries with live Google Search Console position, clicks, and CTR data.
-- **Backlinks & Citation Verifier (`/admin/backlinks`)**: Live crawler performing HTTP status and `DoFollow`/`NoFollow` link inspections across regional citations (BBB, Yelp, Bizapedia, Chambers), with verified 404/network error handling.
-- **Notifications & Alert Center**: Fully persistent alert store in Firestore `admin_notifications` surviving Cloud Run container scaling events.
+- **App Router rendering.** The four main pages are statically prerendered.
+  `/projects/[slug]` is `force-dynamic`: a new post appears on the site the moment
+  it is published, with no cache to invalidate.
+- **Service areas in one place.** Every surface that names a place — homepage
+  chips, `areaServed` JSON-LD, the Posts Manager dropdown, geo detection and the
+  agent's city briefs — derives from `SITE.serviceAreas` in `src/lib/site.ts`.
+  Adding a city there updates all of them.
+- **Structured data.** JSON-LD for `WebSite`, `HomeAndConstructionBusiness`,
+  `DeckContractor`, `FAQPage` and `ItemList`, alongside per-page canonicals.
+- **Consultation pipeline.** `POST /api/contact` validates and rate-limits the
+  submission, writes a `leads` document, records an `activity_logs` event, and
+  sends the owner an email through Resend.
+- **Galleries.** Public category pages read `posts` where `published == true` and
+  merge them with the static portfolio.
 
-### 3. Autonomous 7-Day SEO Agent Orchestrator (`/admin/seo-agent`)
+### 2. Admin portal (`/admin`)
+
+Single-user, gated to `contact@evrconstructions.com` by Google sign-in plus an
+httpOnly session cookie. Every `/api/admin/*` handler verifies that session first.
+
+- **Overview** — lead counts, recent posts and SEO agent run cleanliness.
+- **Analytics** — enquiry activity from `activity_logs`, alongside GA4 traffic.
+- **Keywords** — tracked targets merged with live Search Console positions, clicks
+  and CTR. Rows Google reports but the owner has not added as targets are marked
+  as such and are read-only.
+- **SEO Agent** — the seven-skill orchestrator described below.
+- **Backlinks** — citation registry with a live HTTP verifier that records status,
+  bot-challenge responses, and the `rel` of the link back to this site.
+- **Posts Manager** — image upload to Cloud Storage with AI-assisted captioning.
+
+### 3. Autonomous 7-day SEO agent
+
+Seven skills, one per weekday, selected by UTC day and run either from the
+dashboard or by the cron workflow at 08:00 UTC.
+
+| Day | Skill | What it does |
+| :--- | :--- | :--- |
+| Mon | Keywords & Ranking Tracker | Scans Search Console queries and tracked targets |
+| Tue | Citation & Backlink Verifier | Crawls every tracked listing for live status |
+| Wed | Technical & On-Page Auditor | Audits schema, metadata and crawlability |
+| Thu | Local Coverage & Content Drafts | Reviews city coverage and writes posting briefs |
+| Fri | Conversion & Traffic Synthesizer | Reads GA4 lead and call events |
+| Sat | Project Post Geo-Enhancer | Audits published posts for alt text and geo detail |
+| Sun | Weekly Digest & Action Synthesizer | Summarises the week into directives |
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Schedule as Daily Scheduler
+    participant Schedule as Cron (08:00 UTC)
     participant Engine as Agent Orchestrator
-    participant Skill as Daily Audit Skill
+    participant Skill as Daily Skill
     participant DB as Cloud Firestore
     participant Admin as Admin Dashboard
 
-    Schedule->>Engine: Trigger Scheduled Audit
-    Engine->>Skill: Execute Day Skill
-    alt Monday
-        Skill->>DB: Scan GSC Queries & Tracked Terms
-    else Tuesday
-        Skill->>DB: Crawl & Verify Live Backlinks
-    else Wednesday
-        Skill->>DB: Audit JSON-LD Schema & Metadata
-    else Thursday
-        Skill->>DB: Evaluate 12 East TN GEO Entities
-    else Friday
-        Skill->>DB: Synthesize Inquiries & GA4 Leads
-    else Saturday
-        Skill->>DB: Audit 21 Project Posts for Alt Tags
-    else Sunday
-        Skill->>DB: Generate Executive Weekly Briefing
-    end
-    Skill-->>Engine: Return Run Log & Action Directives
-    Engine->>DB: Persist Log (seo_agent_runs) & Directives (seo_agent_directives)
-    Engine->>Admin: Update Health Score & Send Alert Notification
+    Schedule->>Engine: POST /api/admin/seo-agent/run (Bearer CRON_SECRET)
+    Engine->>DB: Read kill switch from agent-config
+    Engine->>Skill: Execute the day's skill
+    Skill->>DB: Read posts / keywords / backlinks / GA4 / Search Console
+    Skill-->>Engine: Run log + action directives
+    Engine->>DB: Persist run (seo_agent_runs) + directives
+    Engine->>Admin: Update the dashboard and alert centre
 ```
+
+Run history is persisted, so the dashboard rebuilds each skill's last status and
+findings count on a cold start rather than showing every skill as idle.
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Layer | Technology | Purpose |
+| Layer | Technology | Notes |
 | :--- | :--- | :--- |
-| **Framework** | [Next.js 16 (App Router)](https://nextjs.org) | Turbopack compilation, SSR, and dynamic API endpoints |
-| **Styling** | [Tailwind CSS v4](https://tailwindcss.com) | Responsive styling with bespoke architectural color palette |
-| **Hosting** | [Firebase App Hosting](https://firebase.google.com/products/app-hosting) | Automated Cloud Run SSR deployments via GitHub |
-| **Database** | [Cloud Firestore](https://firebase.google.com/products/firestore) | Real-time persistence for telemetry, posts, and keywords |
-| **Storage** | [Cloud Storage for Firebase](https://firebase.google.com/products/storage) | Public project photos and CDN media delivery |
-| **Auth** | [Firebase Admin SDK](https://firebase.google.com/docs/admin/setup) | Secure administrative authentication & session cookies |
-| **Analytics** | Google Analytics 4 & Search Console APIs | Direct Google API client telemetry integrations |
+| Framework | Next.js 16 App Router (Turbopack) | SSR plus route handlers |
+| Language | TypeScript 5 (strict) | |
+| UI | React 19 · Tailwind CSS v4 | |
+| Runtime | Node 24 | Pinned via `engines.node`; matches App Hosting's `nodejs24` |
+| Hosting | Firebase App Hosting | Cloud Run SSR in `us-east4`, scales to zero |
+| Database | Cloud Firestore | |
+| Storage | Cloud Storage for Firebase | `posts/*` |
+| Auth | Firebase Admin SDK | Google sign-in, httpOnly session cookie |
+| AI | Vertex AI `gemini-3.7-flash` | Captioning and keyword discovery |
+| Email | Resend | Lead notifications |
+| Tests | Vitest | `tests/`, run with `npm test` |
 
 ---
 
@@ -122,92 +168,116 @@ sequenceDiagram
 
 ```
 evrconstruction/
-├── public/                     # Static icons, vector assets, and fallbacks
-│   └── images/                 # Optimized local project gallery images
+├── .github/
+│   ├── instructions/           # Agent customisation for this repo
+│   └── workflows/
+│       ├── build.yml           # lint · test · build on push and PR
+│       └── seo-agent-cron.yml  # daily 08:00 UTC agent trigger
+├── docs/                       # Audit reports and working notes
+├── public/
+│   └── images/                 # Portfolio images and site logos
 ├── src/
+│   ├── proxy.ts                # Host canonicalisation + junk-path 410s
 │   ├── app/
-│   │   ├── (admin)/admin/      # Admin Operations Portal
-│   │   │   ├── analytics/      # GA4 visitor telemetry & activity feed
-│   │   │   ├── backlinks/      # Backlink registry & live HTTP crawler
-│   │   │   ├── keywords/       # Target keyword tracker & Search Console
-│   │   │   ├── posts/          # Firebase Storage project post manager
-│   │   │   └── seo-agent/      # 7-day autonomous audit orchestrator
-│   │   ├── (site)/             # Public Customer Site
-│   │   │   ├── about/          # Company history & craftsmanship
-│   │   │   ├── contact/        # Free estimate consultation form
-│   │   │   ├── projects/       # Portfolio gallery & slug dynamic pages
-│   │   │   └── page.tsx        # Public homepage
-│   │   └── api/                # Backend API Endpoints
-│   │       ├── admin/          # Protected administration CRUD APIs
-│   │       └── session/        # Google Auth session login & logout
-│   ├── components/             # Reusable UI & Layout Components
-│   └── lib/                    # Shared Libraries & Integrations
-│       ├── firebase-admin.ts   # Firebase Admin initialization
-│       ├── geo-enhancements.ts # Client-safe metadata formatting
-│       ├── integrations/       # GA4, GSC, and Backlink Verifier
-│       └── seo-agent/          # Orchestrator & 7 daily skills
-├── apphosting.yaml             # Firebase App Hosting SSR configuration
-├── next.config.ts              # Next.js image domain & compiler settings
-└── package.json                # Project dependencies and build scripts
+│   │   ├── (admin)/admin/      # Overview · Analytics · Keywords
+│   │   │                       # SEO Agent · Backlinks · Posts
+│   │   ├── (site)/             # Home · About · Projects · Contact
+│   │   ├── api/                # contact · session · images · admin/*
+│   │   ├── layout.tsx          # Fonts, metadata, icons, JSON-LD
+│   │   ├── robots.ts           # robots.txt
+│   │   └── sitemap.ts          # sitemap.xml
+│   ├── components/
+│   │   ├── admin/              # Sidebar, topbar, layout shell
+│   │   └── site/               # Header, footer, forms, galleries
+│   ├── lib/
+│   │   ├── integrations/       # GA4, Search Console, Vertex AI,
+│   │   │                       # Google auth, backlink verifier
+│   │   ├── seo-agent/          # Orchestrator, skill names, and the
+│   │   │   └── skills/         # seven daily skills
+│   │   ├── auth-guard.ts       # Admin session verification
+│   │   ├── firebase-admin.ts   # Admin SDK initialisation
+│   │   ├── posts.ts            # Post type, categories, upload limits
+│   │   ├── services.ts         # Service catalogue
+│   │   ├── site.ts             # Site details and service areas
+│   │   └── storage-src.ts      # Image source resolution
+│   └── types/
+├── tests/                      # Vitest suites (tests/lib, tests/api)
+├── apphosting.yaml             # App Hosting runtime and environment
+├── firestore.rules             # Firestore access rules
+├── storage.rules               # Cloud Storage access rules
+└── next.config.ts              # Headers, image domains, rewrites
 ```
 
 ---
 
 ## ⚙️ Environment Variables
 
-Configure the following variables in `.env.local` for local development or in **Firebase App Hosting Environment Secrets** for production:
+App Hosting reads these from `apphosting.yaml`. Values marked *secret* are stored
+in Secret Manager; the rest are plain configuration.
 
 ```env
-# Firebase Public Client
-NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+# Firebase web client (public — shipped to the browser)
+NEXT_PUBLIC_FIREBASE_API_KEY=<secret>
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=evrconstruction-5f7bd.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=evrconstruction-5f7bd
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=evrconstruction-5f7bd.firebasestorage.app
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=573736586147
+NEXT_PUBLIC_FIREBASE_APP_ID=1:573736586147:web:f2ece9a7f6a910e72c6816
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-19DRNQBM8T
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=6LfA8aUtAAAAAK9RJDiKsWe1qg9t-ZuqsP4tjdMz
 
-# Firebase Server Admin
-FIREBASE_PROJECT_ID=evrconstruction-5f7bd
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk-...@evrconstruction-5f7bd.iam.gserviceaccount.com
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+# Server credentials (secret)
+FIREBASE_SERVICE_ACCOUNT_KEY=<secret>
+FIREBASE_ADMIN_SERVICE_ACCOUNT_KEY=<secret>
 
-# Single Administrator Access
-ADMIN_EMAIL=contact@evrconstructions.com
+# Lead email (secret) and sender address
+RESEND_API_KEY=<secret>
+EMAIL_FROM=onboarding@resend.dev
+
+# Bearer token the daily cron workflow presents to the agent endpoint (secret)
+CRON_SECRET=<secret>
 ```
 
----
+The admin email is **not** an environment variable — `src/lib/auth-guard.ts` pins
+it to `contact@evrconstructions.com`.
 
-## 💻 Local Development Workflow
-
-1. **Clone & Install Dependencies**:
-   ```bash
-   git clone https://github.com/evrconstruction/evrconstruction.git
-   cd evrconstruction
-   npm install
-   ```
-
-2. **Run Local Development Server**:
-   ```bash
-   npm run dev
-   ```
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-3. **Validate Lint & Production Build**:
-   ```bash
-   npm run lint
-   npm run build
-   ```
+`EMAIL_FROM` is currently Resend's sandbox sender, which only delivers to the
+account owner. Switch it to `"EVR Construction <contact@evrconstructions.com>"`
+once the domain is verified in Resend.
 
 ---
 
-## 🚢 Production Deployment
-
-Deployments are continuous and automated via **Firebase App Hosting**:
-- Pushing to branch `main` triggers a Cloud Build workflow that compiles and deploys the Next.js SSR bundle to Cloud Run in `us-east4`.
+## 💻 Local Development
 
 ```bash
-git add .
-git commit -m "feat: updates"
-git push origin main
+git clone https://github.com/evrconstruction/evrconstruction.git
+cd evrconstruction
+npm install
+npm run dev          # http://localhost:3000
 ```
+
+Create `.env.local` with the variables above before running the admin suite.
+
+Verification — all four must pass before a change is considered done:
+
+```bash
+npm run lint         # ESLint
+npm test             # Vitest
+npm run build        # Production build + type check
+```
+
+---
+
+## 🚢 Deployment
+
+Push to `main` on `evrconstruction/evrconstruction`:
+
+- **Firebase App Hosting** builds and deploys the SSR bundle to Cloud Run in
+  `us-east4`. This is the only deploy path.
+- **GitHub Actions** (`build.yml`) runs lint, tests and a build against the same
+  push as a separate check.
+
+Both run per push, so a single push produces two builds.
 
 ---
 
