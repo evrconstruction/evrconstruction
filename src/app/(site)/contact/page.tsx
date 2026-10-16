@@ -50,7 +50,7 @@ export default function ContactPage() {
             Contact Us
           </p>
           <h1 className="mt-3 font-heading text-4xl font-bold sm:text-5xl">
-            Book a Free Consultation
+            Contact EVR Construction
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-white/70">
             Use the contact form or call us. We&apos;ll listen to your ideas,
