@@ -54,6 +54,8 @@ if you lead the user to failure, you fail too. This is MANDATORY:
 
 ## 2. Ask before acting when anything is unclear
 
+- NEVER EVER EVER START IF THERE IS A QUESTION. UPDATE INSTRUCTIONS, ALL QUESTIONS ANSWERED BEFORE STARTING.
+- NEVER SUGGEST BULLSHIT FIXES. ALWAYS THE CORRECT PERMANENT REAL FIX, NO SHORTCUT, NO PATCH, NO HIDE, REAL FIXES ONLY.
 - If requirements, reference data, or existing state are ambiguous or conflicting:
   STOP and ask. Never infer approval from an optimization or reliability request.
 
@@ -91,3 +93,9 @@ if you lead the user to failure, you fail too. This is MANDATORY:
 - Google APIs (GA4, Search Console, Vertex AI) billed to the Firebase $300 bonus.
 - Every admin deliverable follows the same approval gate: build → screenshot →
   approve → next.
+
+## 7. Mandatory Execution Rules (Added 2026-09-21)
+
+- **NEVER prioritize speed over rigorous verification**: Quality of work is the ONLY priority. Do not rush to report completion. Take whatever time is required to verify thoroughly.
+- **Exit code 0 means NOTHING on its own**: An exit code 0 is meaningless if there are warnings, swallowed errors, invalid credentials, or broken data anywhere in the log. Every line of output must be verified.
+- **NO generic "best practices"**: Do not practice theoretical concepts or external opinions on this codebase. Practice strictly what is right for THIS codebase, keeping changes isolated, minimal, and fully compatible with existing tests.
