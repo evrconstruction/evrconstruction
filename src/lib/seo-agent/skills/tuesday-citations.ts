@@ -77,7 +77,9 @@ export async function runTuesdayCitationsSkill(): Promise<SkillResult> {
     timestamp: new Date().toISOString(),
     skillId: "skill-tuesday",
     skillName: SKILL_NAMES["skill-tuesday"],
-    status: missingCount === 0 ? "Success" : "Error",
+    // A broken listing is a finding about the directory, not a failure of this
+    // run. "Error" made a successful verification pass read as a broken agent.
+    status: missingCount === 0 ? "Success" : "Warning",
     durationMs: Date.now() - start,
     summary: `Verified ${snapshot.docs.length} monitored citation profiles: ${activeCount} active, ${missingCount} missing, ${unverifiedCount} could not be checked.`,
     findings,

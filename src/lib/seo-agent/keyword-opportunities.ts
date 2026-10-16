@@ -78,6 +78,59 @@ export function detectCity(query: string): string | null {
   return tag ? tag.replace(", TN", "") : null;
 }
 
+export interface CityDemand {
+  city: string;
+  impressions: number;
+  clicks: number;
+  /** Best (lowest) position seen, or 0 when nothing ranked. */
+  bestPosition: number;
+  /** How many distinct queries named this city. */
+  queries: number;
+}
+
+/**
+ * Search demand per advertised service area, from the queries Google reported.
+ *
+ * A city nobody searches for cannot be helped by publishing a post there, and a
+ * city people already search for can. Without this the coverage check treated
+ * every uncovered city as equally urgent and recommended project work in places
+ * with no demand at all — advice that cannot be acted on and, worse, cannot be
+ * completed, so the finding never closed.
+ */
+export function summarizeCityDemand(
+  keywords: GSCKeywordItem[]
+): Map<string, CityDemand> {
+  const byCity = new Map<string, CityDemand>();
+
+  for (const item of keywords) {
+    const city = detectCity(item.matchedQuery ?? item.keyword);
+    if (!city) continue;
+
+    const position = item.position > 0 ? item.position : 0;
+    const existing = byCity.get(city);
+
+    if (!existing) {
+      byCity.set(city, {
+        city,
+        impressions: item.impressions ?? 0,
+        clicks: item.clicks ?? 0,
+        bestPosition: position,
+        queries: 1,
+      });
+      continue;
+    }
+
+    existing.impressions += item.impressions ?? 0;
+    existing.clicks += item.clicks ?? 0;
+    existing.queries += 1;
+    if (position > 0 && (existing.bestPosition === 0 || position < existing.bestPosition)) {
+      existing.bestPosition = position;
+    }
+  }
+
+  return byCity;
+}
+
 function toReportedQuery(item: GSCKeywordItem): ReportedQuery {
   const ctrPercent = Number.parseFloat(item.ctr ?? "");
   return {

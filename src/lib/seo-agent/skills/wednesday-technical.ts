@@ -2,6 +2,10 @@ import { AgentDirective, AgentRunLog } from "../types";
 import { SkillResult } from "./monday-keywords";
 import { SITE } from "@/lib/site";
 import { SKILL_NAMES } from "../skill-names";
+import {
+  closeStaleDirectives,
+  resolveDirectiveIfOpen,
+} from "../directive-lifecycle";
 
 const CRITICAL_ROUTES = [
   { path: "/", name: "Homepage" },
@@ -145,6 +149,8 @@ export async function runWednesdayTechnicalSkill(): Promise<SkillResult> {
   let robotsHasSitemap = false;
   let sitemapUrlCount = 0;
   let homepageHtml: string | null = null;
+  /** Directive ids for routes that answered, so their old reports get closed. */
+  const healthyRouteDirectives: string[] = [];
 
   for (const route of CRITICAL_ROUTES) {
     const url = `${BASE_URL}${route.path}`;
@@ -161,6 +167,11 @@ export async function runWednesdayTechnicalSkill(): Promise<SkillResult> {
 
       if (res.status === 200) {
         passedCount++;
+
+        // The route answers now, so any directive raised while it was down is
+        // describing a problem that no longer exists.
+        await resolveDirectiveIfOpen(directiveId);
+        healthyRouteDirectives.push(directiveId);
 
         if (route.path === "/robots.txt") {
           const bodyText = await res.text();
@@ -214,6 +225,18 @@ export async function runWednesdayTechnicalSkill(): Promise<SkillResult> {
       : `Crawl check: ${failedCount} of ${CRITICAL_ROUTES.length} routes had problems.`
   );
 
+  // Routes are audited from a fixed list, so a route removed from it would keep
+  // an Open directive forever. Anything still failing was recorded above.
+  const closedRoutes = await closeStaleDirectives(
+    "dir-tech-route-",
+    healthyRouteDirectives
+  );
+  if (closedRoutes.length > 0) {
+    findings.push(
+      `Closed ${closedRoutes.length} earlier route finding${closedRoutes.length === 1 ? "" : "s"} that now answer${closedRoutes.length === 1 ? "s" : ""} correctly.`
+    );
+  }
+
   if (robotsHasSitemap) {
     findings.push("robots.txt points crawlers at the XML sitemap.");
   }
@@ -242,6 +265,8 @@ export async function runWednesdayTechnicalSkill(): Promise<SkillResult> {
         createdAt: timestamp,
       });
     } else {
+      await resolveDirectiveIfOpen("dir-tech-schema-missing");
+
       const found = REQUIRED_BUSINESS_FIELDS.filter((key) => schema.fields[key]);
       findings.push(
         `Local business schema: ${found.length} of ${REQUIRED_BUSINESS_FIELDS.length} expected fields present.`
@@ -271,6 +296,8 @@ export async function runWednesdayTechnicalSkill(): Promise<SkillResult> {
           status: "Open",
           createdAt: timestamp,
         });
+      } else {
+        await resolveDirectiveIfOpen("dir-tech-schema-fields");
       }
 
       const published = SITE.serviceAreas.map((area) => area.toLowerCase());
@@ -297,6 +324,8 @@ export async function runWednesdayTechnicalSkill(): Promise<SkillResult> {
           status: "Open",
           createdAt: timestamp,
         });
+      } else {
+        await resolveDirectiveIfOpen("dir-tech-schema-areas");
       }
     }
   }
@@ -306,7 +335,9 @@ export async function runWednesdayTechnicalSkill(): Promise<SkillResult> {
     timestamp,
     skillId: "skill-wednesday",
     skillName: SKILL_NAMES["skill-wednesday"],
-    status: failedCount === 0 ? "Success" : "Error",
+    // A route failing is a finding about the site, not a failure of this run.
+    // Recording it as "Error" made a successful audit read as a broken agent.
+    status: failedCount === 0 ? "Success" : "Warning",
     durationMs: Date.now() - start,
     summary: `Checked ${CRITICAL_ROUTES.length} public routes (${passedCount} returned HTTP 200) and inspected the homepage structured data.`,
     findings,

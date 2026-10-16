@@ -5,7 +5,11 @@ import { SITE } from "@/lib/site";
 import { SERVICES } from "@/lib/services";
 import { generateJson, VERTEX_MODEL_NAME } from "@/lib/integrations/vertex-ai";
 import type { AiResult } from "@/lib/integrations/vertex-ai";
+import { fetchSearchConsoleKeywords } from "@/lib/integrations/google-search-console";
+import { summarizeCityDemand } from "../keyword-opportunities";
+import type { CityDemand } from "../keyword-opportunities";
 import { SKILL_NAMES } from "../skill-names";
+import { closeStaleDirectives, resolveDirectiveIfOpen } from "../directive-lifecycle";
 
 const SKILL_ID = "skill-thursday";
 const SKILL_NAME = SKILL_NAMES[SKILL_ID];
@@ -67,6 +71,30 @@ export async function runThursdayGeoAioSkill(): Promise<SkillResult> {
   const uncovered = coverage.filter((entry) => entry.postCount === 0);
   const coveragePercent = Math.round((covered.length / coverage.length) * 100);
 
+  // Demand decides which gaps are worth reporting. A city nobody searches for
+  // cannot be helped by publishing a post there, and recommending it is advice
+  // that can never be completed — which is how eleven unclosable "publish work
+  // in <city>" directives accumulated.
+  let demand = new Map<string, CityDemand>();
+  let demandReadable = false;
+  try {
+    const keywordReport = await fetchSearchConsoleKeywords();
+    demand = summarizeCityDemand(keywordReport.keywords);
+    demandReadable = true;
+  } catch (err) {
+    console.warn("Thursday skill could not read search demand:", err);
+  }
+
+  const demandFor = (city: string) => demand.get(city);
+  const wanted = uncovered
+    .filter((entry) => (demandFor(entry.city)?.impressions ?? 0) > 0)
+    .sort(
+      (a, b) =>
+        (demandFor(b.city)?.impressions ?? 0) -
+        (demandFor(a.city)?.impressions ?? 0)
+    );
+  const noDemand = uncovered.filter((entry) => !demandFor(entry.city));
+
   findings.push(
     `Project post coverage: ${covered.length} of ${coverage.length} advertised service areas have a published post naming them (${coveragePercent}%).`
   );
@@ -81,14 +109,40 @@ export async function runThursdayGeoAioSkill(): Promise<SkillResult> {
     findings.push(
       `${uncovered.length} advertised service area${uncovered.length === 1 ? "" : "s"} have no published project post: ${uncovered.map((e) => e.city).join(", ")}. These cities are already named on the homepage and in the site's structured data — what is absent is project work showing EVR building there.`
     );
+
+    if (!demandReadable) {
+      findings.push(
+        "Search demand could not be read, so the cities below are listed without it and no priority was assigned."
+      );
+    } else if (noDemand.length > 0) {
+      // Deliberately not a directive. There is no search demand to serve, so
+      // there is nothing to act on, and a post written for a city nobody looks
+      // for would earn nothing.
+      findings.push(
+        `No search demand found for ${noDemand.map((e) => e.city).join(", ")} — Google reported no queries naming these cities in the last 28 days, so no action is proposed for them. This is a market observation, not a to-do item.`
+      );
+    }
   } else {
     findings.push(
       `Complete coverage: every advertised service area has at least one published post naming it.`
     );
   }
 
+  if (wanted.length > 0) {
+    findings.push(
+      `Cities with real search demand and no published work, most searched first: ${wanted
+        .map(
+          (e) =>
+            `${e.city} (${demandFor(e.city)?.impressions} impressions, best position #${demandFor(e.city)?.bestPosition || "—"})`
+        )
+        .join(", ")}.`
+    );
+  }
+
   const existingBriefs = await loadPostingBriefs();
-  const awaitingDraft = uncovered.filter((entry) => !existingBriefs.has(citySlug(entry.city)));
+  // Briefs are only drafted for cities with demand, since a brief for a city
+  // nobody searches for would cost a model call and never be used.
+  const awaitingDraft = wanted.filter((entry) => !existingBriefs.has(citySlug(entry.city)));
   const toDraft = awaitingDraft.slice(0, MAX_DRAFTS_PER_RUN);
 
   const generated = await generateBriefs(toDraft.map((entry) => entry.city));
@@ -115,17 +169,31 @@ export async function runThursdayGeoAioSkill(): Promise<SkillResult> {
     );
   }
 
-  for (const entry of uncovered) {
+  // One directive per city that people actually search for, ordered by how
+  // often they search it. Cities with no demand are reported as a finding but
+  // deliberately left off the action list.
+  for (const entry of wanted) {
     const slug = citySlug(entry.city);
     const brief = generated.ok.get(entry.city) ?? existingBriefs.get(slug);
+    const cityDemand = demandFor(entry.city);
+    const impressions = cityDemand?.impressions ?? 0;
+    const bestPosition = cityDemand?.bestPosition ?? 0;
 
     directives.push({
       id: `dir-geo-missing-city-${slug}`,
       skillId: SKILL_ID,
       title: `Publish project work in ${entry.city}`,
-      description: describeGap(entry.city, brief),
-      impact: `Adds published project work for ${entry.city}, TN`,
-      priority: "High",
+      description:
+        `${impressions} impressions in the last 28 days came from searches naming ${entry.city}` +
+        (bestPosition > 0
+          ? `, with a best position of #${bestPosition}`
+          : "") +
+        `, and no published project post names the city yet. ` +
+        describeGap(entry.city, brief),
+      impact: `Adds published project work for ${entry.city}, TN, where ${impressions} impressions are already being served`,
+      // Ranked by how much demand is actually waiting, so the top of the list
+      // is where effort pays first rather than an arbitrary city order.
+      priority: impressions >= 10 ? "High" : "Medium",
       category: "AIO_GEO",
       actionLabel: "Create Post",
       actionHref: "/admin/posts",
@@ -134,7 +202,22 @@ export async function runThursdayGeoAioSkill(): Promise<SkillResult> {
     });
   }
 
-  const briefedCount = uncovered.filter((entry) => existingBriefs.has(citySlug(entry.city))).length;
+  // A city that gained a post, or fell out of demand, must not leave its
+  // directive Open: left behind it blocks a fresh report if the gap returns.
+  const closedCities = await closeStaleDirectives(
+    "dir-geo-missing-city-",
+    directives.map((d) => d.id)
+  );
+  if (closedCities.length > 0) {
+    findings.push(
+      `Closed ${closedCities.length} earlier city finding${closedCities.length === 1 ? "" : "s"} that ${closedCities.length === 1 ? "is" : "are"} no longer open.`
+    );
+  }
+  for (const entry of covered) {
+    await resolveDirectiveIfOpen(`dir-geo-missing-city-${citySlug(entry.city)}`);
+  }
+
+  const briefedCount = wanted.filter((entry) => existingBriefs.has(citySlug(entry.city))).length;
   const draftedCount = generated.ok.size;
 
   const runLog: AgentRunLog = {
@@ -142,9 +225,13 @@ export async function runThursdayGeoAioSkill(): Promise<SkillResult> {
     timestamp: new Date().toISOString(),
     skillId: SKILL_ID,
     skillName: SKILL_NAME,
-    status: "Success",
+    status: wanted.length === 0 ? "Success" : "Warning",
     durationMs: Date.now() - start,
-    summary: `Reviewed ${posts.length} published posts against ${coverage.length} advertised service areas: ${coveragePercent}% have published work naming them. ${uncovered.length} gap${uncovered.length === 1 ? "" : "s"} open, ${draftedCount} brief${draftedCount === 1 ? "" : "s"} drafted this run, ${briefedCount} already on file.`,
+    summary:
+      `Reviewed ${posts.length} published posts against ${coverage.length} advertised service areas: ${coveragePercent}% have published work naming them. ` +
+      `${wanted.length} uncovered cit${wanted.length === 1 ? "y" : "ies"} ${wanted.length === 1 ? "has" : "have"} search demand` +
+      (noDemand.length > 0 ? `, and ${noDemand.length} have none and were not raised as actions` : "") +
+      `. ${draftedCount} brief${draftedCount === 1 ? "" : "s"} drafted this run, ${briefedCount} already on file.`,
     findings,
   };
 

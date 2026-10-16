@@ -564,16 +564,26 @@ export default function SeoAgentPage() {
                     {run.skillName}
                   </td>
                   <td className="py-3.5 whitespace-nowrap">
+                    {/* Three states, not two. "Warning" means the skill ran
+                        fine and found something; "Error" means it could not
+                        run. Rendering both red made a successful audit that
+                        found a problem look like a broken agent. */}
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border ${
                         run.status === "Success"
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                          : "bg-rose-50 text-rose-700 border border-rose-200"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : run.status === "Warning"
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : "bg-rose-50 text-rose-700 border-rose-200"
                       }`}
                     >
                       <span
                         className={`h-1.5 w-1.5 rounded-full ${
-                          run.status === "Success" ? "bg-emerald-500" : "bg-rose-500"
+                          run.status === "Success"
+                            ? "bg-emerald-500"
+                            : run.status === "Warning"
+                              ? "bg-amber-500"
+                              : "bg-rose-500"
                         }`}
                       />
                       {run.status}
