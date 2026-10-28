@@ -25,8 +25,12 @@ export async function generateMetadata({ params }: ServicePageProps): Promise<Me
   const { slug } = await params;
   const service = getService(slug);
 
+  // Answered here rather than only in the page body: the segment has a
+  // `loading.tsx`, so a 200 shell streams before the page component runs and the
+  // 404 UI then arrives inside a 200 response. Resolving metadata happens before
+  // that shell is sent, so the status is still correct when this throws.
   if (!service) {
-    return { title: "Project Collection" };
+    notFound();
   }
 
   const pageUrl = `https://evrconstructions.com/projects/${slug}`;
