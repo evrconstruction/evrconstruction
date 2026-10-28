@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { detectBrandLinkRel } from "@/lib/integrations/backlink-verifier";
+import { classifyServedPage, detectBrandLinkRel } from "@/lib/integrations/backlink-verifier";
 
 /**
  * Covers the link-type reading that decides whether a backlink passes ranking
@@ -69,5 +69,32 @@ describe("detectBrandLinkRel", () => {
     const html = `<a class='brand' href='https://evrconstructions.com' rel='nofollow noopener'>x</a>`;
 
     expect(detectBrandLinkRel(html)).toBe("NoFollow");
+  });
+});
+
+/**
+ * A 2xx only proves something was served. The Bizapedia listing answered 200 with
+ * no brand text (consent shell / regional variant) and was stored as "Missing",
+ * which raised a High directive telling the owner to rebuild a live listing.
+ */
+describe("classifyServedPage", () => {
+  it("reports a served listing that names the business as active", () => {
+    expect(classifyServedPage("<h1>EVR Construction LLC</h1>")).toBe("Active");
+  });
+
+  it("does not call a page without the business missing", () => {
+    // The regression guard: this must be Blocked, never Missing. A 200 body that
+    // never mentions the business is unreadable evidence, not proof it was removed.
+    expect(classifyServedPage("<html><body>Please accept cookies</body></html>")).toBe("Blocked");
+  });
+
+  it("does not treat an empty body as a missing listing", () => {
+    expect(classifyServedPage("")).toBe("Blocked");
+  });
+
+  it("treats a challenge shell as blocked even if it names the business", () => {
+    expect(classifyServedPage("<title>Client Challenge</title><p>EVR Construction</p>")).toBe(
+      "Blocked"
+    );
   });
 });

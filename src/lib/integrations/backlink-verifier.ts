@@ -53,6 +53,44 @@ function looksLikeBotChallenge(html: string): boolean {
 /** Hosts that identify a link as pointing back at this business. */
 const BRAND_HOSTNAMES = ["evrconstructions.com", "evrconstruction.com"];
 
+/**
+ * Text that identifies a served page as this business's own listing.
+ *
+ * "henry ramirez" is the name published on the existing directory profiles, so a
+ * listing that renders the owner's name is still recognisably ours.
+ */
+const BRAND_MENTIONS = [
+  "evr construction",
+  "evrconstruction",
+  "evrconstructions.com",
+  "evrconstruction.llc",
+  "henry ramirez",
+];
+
+function mentionsThisBusiness(html: string): boolean {
+  const lower = html.toLowerCase();
+
+  return BRAND_MENTIONS.some((mention) => lower.includes(mention));
+}
+
+/**
+ * Classify a response that arrived with a 2xx status.
+ *
+ * A 2xx says only that *something* was served. Directories answer automated
+ * requests with consent walls, script shells and regional variants that never
+ * name the business, so a missing brand mention is not evidence the listing was
+ * removed — it means the listing could not be read. Reporting that as "Missing"
+ * raises a High-priority directive telling the owner to rebuild a listing that is
+ * still live. "Missing" is reserved for 404/410, the only statuses that actually
+ * state the listing is gone.
+ */
+export function classifyServedPage(html: string): "Active" | "Blocked" {
+  // A challenge shell can carry the business name without being the listing.
+  if (looksLikeBotChallenge(html)) return "Blocked";
+
+  return mentionsThisBusiness(html) ? "Active" : "Blocked";
+}
+
 /** `rel` values that tell search engines not to pass ranking credit. */
 const NON_FOLLOWING_REL_TOKENS = ["nofollow", "ugc", "sponsored"];
 
@@ -157,32 +195,15 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
     if (res.status >= 200 && res.status < 300) {
       const html = typeof res.data === "string" ? res.data : "";
 
-      if (looksLikeBotChallenge(html)) {
-        return {
-          status: "Blocked",
-          type: directoryLinkType(isYelp, isBbb, isHouzz),
-          httpStatus: res.status,
-          lastVerified: today,
-        };
-      }
-
-      const hasBrand =
-        html.toLowerCase().includes("evr construction") ||
-        html.toLowerCase().includes("evrconstruction") ||
-        html.toLowerCase().includes("evrconstructions.com") ||
-        html.toLowerCase().includes("evrconstruction.llc") ||
-        html.toLowerCase().includes("henry ramirez");
-
       // Read the link's own rel first; the documented directory policy applies
       // only when the response carried no anchor to inspect.
       const brandLinkRel = detectBrandLinkRel(html);
-
       const isNoFollow =
         brandLinkRel === "NoFollow" ||
         (brandLinkRel === null && directoryLinkType(isYelp, isBbb, isHouzz) === "NoFollow");
 
       return {
-        status: hasBrand ? "Active" : "Missing",
+        status: classifyServedPage(html),
         type: isNoFollow ? "NoFollow" : "DoFollow",
         httpStatus: res.status,
         lastVerified: today,

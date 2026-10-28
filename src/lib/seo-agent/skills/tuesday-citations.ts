@@ -61,7 +61,7 @@ export async function runTuesdayCitationsSkill(): Promise<SkillResult> {
     unverifiedCount++;
     const reason =
       verification.status === "Blocked"
-        ? `the directory refused the check (HTTP ${verification.httpStatus})`
+        ? `the directory did not serve the listing (HTTP ${verification.httpStatus})`
         : `the request failed (HTTP ${verification.httpStatus})`;
     findings.push(`${title}: Could not be checked — ${reason}. Listing status unknown.`);
   }
