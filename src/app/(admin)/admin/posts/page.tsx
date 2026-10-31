@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import {
   POST_CATEGORIES,
+  POST_IMAGE_ACCEPT,
+  POST_IMAGE_FORMAT_LABEL,
   POST_IMAGE_MAX_BYTES,
   POST_IMAGE_MIME_TYPES,
   type PostCategory,
@@ -110,10 +112,26 @@ export default function PostsManagerPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Clear the selection so choosing the same file again still fires onChange.
+    e.target.value = "";
+
     if (file.size > POST_IMAGE_MAX_BYTES) {
       setPublishError(`Image must be under ${POST_IMAGE_MAX_BYTES / 1024 / 1024}MB`);
       return;
     }
+
+    // The picker's `accept` list is advisory, so an unsupported file can still
+    // arrive here. Without this check it would fall through `img.onerror` and
+    // preview as a broken image, then be rejected by the API after upload.
+    if (!POST_IMAGE_MIME_TYPES.includes(file.type.toLowerCase())) {
+      setPublishError(
+        `${file.type || "This file type"} is not supported. Use ` +
+          `${POST_IMAGE_FORMAT_LABEL} — iPhone HEIC photos must be converted first.`
+      );
+      return;
+    }
+
+    setPublishError(null);
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -351,7 +369,7 @@ export default function PostsManagerPage() {
                 </label>
                 <input
                   type="file"
-                  accept={POST_IMAGE_MIME_TYPES.join(",")}
+                  accept={POST_IMAGE_ACCEPT}
                   ref={fileInputRef}
                   onChange={handleFileSelect}
                   className="hidden"
@@ -385,8 +403,12 @@ export default function PostsManagerPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     <p className="text-xs font-bold text-slate-700">Click to select photo</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      PNG, JPG, WebP or AVIF up to {POST_IMAGE_MAX_BYTES / 1024 / 1024}MB
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Supported: {POST_IMAGE_FORMAT_LABEL} · up to{" "}
+                      {POST_IMAGE_MAX_BYTES / 1024 / 1024}MB
+                    </p>
+                    <p className="text-[11px] text-rose-600 mt-0.5">
+                      iPhone HEIC photos are not supported — convert to JPG first.
                     </p>
                   </div>
                 )}

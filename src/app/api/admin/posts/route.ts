@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb, adminStorage } from "@/lib/firebase-admin";
 import {
+  POST_IMAGE_FORMAT_LABEL,
   POST_IMAGE_MAX_BYTES,
   POST_IMAGE_MIME_TYPES,
   type ProjectPost,
@@ -85,7 +86,12 @@ export async function POST(request: Request) {
           const buffer = Buffer.from(base64Data, "base64");
 
           if (!POST_IMAGE_MIME_TYPES.includes(mimeType)) {
-            return NextResponse.json({ error: "Unsupported image format" }, { status: 400 });
+            return NextResponse.json(
+              {
+                error: `Unsupported image format (${mimeType}). Use ${POST_IMAGE_FORMAT_LABEL}.`,
+              },
+              { status: 400 }
+            );
           }
           if (buffer.length > POST_IMAGE_MAX_BYTES) {
             return NextResponse.json(
