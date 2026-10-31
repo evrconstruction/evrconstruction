@@ -6,7 +6,18 @@
 supported formats explicit in the UI. The owner converts images before uploading; converting on
 the server was **explicitly rejected** for this change.
 
-**Status:** DONE — code committed and pushed, deployed by App Hosting on push to `main`.
+**Status:** DONE — committed `b2885c6`, pushed to `main`, deployed and verified live.
+
+**Deploy evidence (measured, not assumed):** the push created the `App Hosting - Rollout
+(evrconstruction-5f7bd/us-east4/evrconstruction)` check run on `b2885c6`, which reached
+`completed/success`, together with the `build` check run (`completed/success`). Live after the
+rollout: `/` 200 · `/projects` 200 · `/admin/posts` 200 · `/api/admin/posts` **401** (auth boundary
+intact).
+
+⚠️ The rollout could **not** be confirmed through the App Hosting REST API this session — both the
+`firebase` CLI and `gcloud` credentials are expired (`requested reauth, cannot prompt in
+non-interactive execution`). The commit check run is the evidence used instead. Nothing depends on
+those credentials; deploys are git push.
 
 ---
 
