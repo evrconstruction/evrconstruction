@@ -78,10 +78,14 @@ const BRAND_NAME_TOKENS = ["evr construction", "evrconstruction"];
  * owner's name as it appears on the directory profiles. A page has to carry one
  * of these as well as a name token before it is read as ours. "tn" is left out
  * deliberately — two letters collide with too much unrelated markup.
+ *
+ * `evrconstruction.llc` is deliberately NOT here. It was in `BRAND_MENTIONS` until
+ * 2026-11-23, but it is the Virginia namesake — Squarespace-hosted, serving no
+ * Knoxville, Tennessee or owner-name text. Treating it as a signal of ours would
+ * have the same defect as the singular domain, one layer down.
  */
 const BUSINESS_LOCATION_TOKENS = [
   "evrconstructions.com",
-  "evrconstruction.llc",
   "knoxville",
   "tennessee",
   "henry ramirez",

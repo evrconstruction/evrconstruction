@@ -126,6 +126,16 @@ describe("classifyServedPage", () => {
     ).toBe("Blocked");
   });
 
+  it("does not read a page naming the Virginia namesake's domain as ours", () => {
+    // evrconstruction.llc is the Virginia company, not ours. It sat in
+    // BRAND_MENTIONS until 2026-11-23 and must never act as proof of our listing.
+    expect(
+      classifyServedPage(
+        '<h1>EVR Construction</h1><a href="https://evrconstruction.llc">x</a>'
+      )
+    ).toBe("Blocked");
+  });
+
   it("does not call a page without the business missing", () => {
     // The regression guard: this must be Blocked, never Missing. A 200 body that
     // never mentions the business is unreadable evidence, not proof it was removed.
