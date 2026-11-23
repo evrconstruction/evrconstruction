@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb, adminStorage } from "@/lib/firebase-admin";
 import {
+  parseDataImageUrl,
   POST_IMAGE_FORMAT_LABEL,
   POST_IMAGE_MAX_BYTES,
   POST_IMAGE_MIME_TYPES,
@@ -78,41 +79,47 @@ export async function POST(request: Request) {
 
     // If image is base64, upload to Firebase Cloud Storage
     if (src.startsWith("data:image")) {
+      const dataImage = parseDataImageUrl(src);
+      if (!dataImage) {
+        return NextResponse.json(
+          {
+            error: `Image could not be read as a base64 data URL. Upload a ${POST_IMAGE_FORMAT_LABEL} file instead.`,
+          },
+          { status: 400 }
+        );
+      }
+
       try {
-        const matches = src.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
-        if (matches && matches.length === 3) {
-          const mimeType = matches[1];
-          const base64Data = matches[2];
-          const buffer = Buffer.from(base64Data, "base64");
+        const { mimeType, base64Data } = dataImage;
+        const buffer = Buffer.from(base64Data, "base64");
 
-          if (!POST_IMAGE_MIME_TYPES.includes(mimeType)) {
-            return NextResponse.json(
-              {
-                error: `Unsupported image format (${mimeType}). Use ${POST_IMAGE_FORMAT_LABEL}.`,
-              },
-              { status: 400 }
-            );
-          }
-          if (buffer.length > POST_IMAGE_MAX_BYTES) {
-            return NextResponse.json(
-              { error: `Image too large (max ${POST_IMAGE_MAX_BYTES / 1024 / 1024}MB)` },
-              { status: 400 }
-            );
-          }
-
-          const extension = mimeType.split("/")[1] || "jpg";
-          storagePath = `posts/project-${Date.now()}.${extension}`;
-
-          const bucket = adminStorage.bucket();
-          const file = bucket.file(storagePath);
-
-          await file.save(buffer, {
-            metadata: {
-              contentType: mimeType,
-              cacheControl: "public, max-age=31536000",
+        if (!POST_IMAGE_MIME_TYPES.includes(mimeType)) {
+          return NextResponse.json(
+            {
+              error: `Unsupported image format (${mimeType}). Use ${POST_IMAGE_FORMAT_LABEL}.`,
             },
-          });
+            { status: 400 }
+          );
         }
+        if (buffer.length > POST_IMAGE_MAX_BYTES) {
+          return NextResponse.json(
+            { error: `Image too large (max ${POST_IMAGE_MAX_BYTES / 1024 / 1024}MB)` },
+            { status: 400 }
+          );
+        }
+
+        const extension = mimeType.split("/")[1] || "jpg";
+        storagePath = `posts/project-${Date.now()}.${extension}`;
+
+        const bucket = adminStorage.bucket();
+        const file = bucket.file(storagePath);
+
+        await file.save(buffer, {
+          metadata: {
+            contentType: mimeType,
+            cacheControl: "public, max-age=31536000",
+          },
+        });
       } catch (storageErr) {
         console.error("Cloud Storage upload failed:", storageErr);
         return NextResponse.json(

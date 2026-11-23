@@ -63,6 +63,26 @@ export const POST_IMAGE_FORMAT_LABEL = POST_IMAGE_MIME_TYPES.map(
  */
 export const POST_IMAGE_ACCEPT = [...POST_IMAGE_MIME_TYPES, ".jpg", ".jpeg"].join(",");
 
+export interface DataImageUrl {
+  mimeType: string;
+  base64Data: string;
+}
+
+/**
+ * Split a base64 `data:` image URL into its MIME type and payload.
+ *
+ * Returns null for anything that does not match, and the caller must treat that
+ * as a rejected upload. The route used to fall through on a malformed data URL,
+ * which stored the whole base64 string in the post document as `src`.
+ */
+export function parseDataImageUrl(src: string): DataImageUrl | null {
+  const match = /^data:([A-Za-z-+/]+);base64,(.+)$/.exec(src);
+  if (!match) {
+    return null;
+  }
+  return { mimeType: match[1], base64Data: match[2] };
+}
+
 /** A project post, as stored in the `posts` collection. */
 export interface ProjectPost {
   id: string;
