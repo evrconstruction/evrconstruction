@@ -29,14 +29,22 @@ const CRITICAL_ROUTES = [
 
 const BASE_URL = SITE_URL;
 
-/** Fields a local business schema needs to be useful to search engines. */
-const REQUIRED_BUSINESS_FIELDS = ["name", "telephone", "address", "geo", "url"] as const;
+/**
+ * Fields a local business schema needs to be useful to search engines.
+ *
+ * `geo` is deliberately absent. It is optional in schema.org, and this business
+ * is a service-area operation with no public premises — requiring coordinates
+ * would push whoever maintains the schema towards inventing a location.
+ */
+const REQUIRED_BUSINESS_FIELDS = ["name", "telephone", "address", "url"] as const;
 
 interface BusinessSchema {
   present: boolean;
   fields: Record<string, string>;
   missing: string[];
   areaServedNames: string[];
+  /** Whether the published address names a street, or only a locality. */
+  hasStreetAddress: boolean;
 }
 
 /** Read a field that may be a plain value or a nested object worth summarising. */
@@ -46,11 +54,14 @@ function describeField(value: unknown): string {
   if (Array.isArray(value)) return `${value.length} entries`;
   if (typeof value === "object") {
     const obj = value as Record<string, unknown>;
-    if (typeof obj.streetAddress === "string") {
+    // A service-area business publishes a locality without a street address, so
+    // this has to render that form too rather than reporting it missing.
+    if (typeof obj.addressLocality === "string" || typeof obj.streetAddress === "string") {
+      const street = typeof obj.streetAddress === "string" ? obj.streetAddress : "";
       const locality = [obj.addressLocality, obj.addressRegion, obj.postalCode]
         .filter((part): part is string => typeof part === "string")
         .join(", ");
-      return `${obj.streetAddress}${locality ? ` — ${locality}` : ""}`;
+      return [street, locality].filter(Boolean).join(" — ");
     }
     if (typeof obj.latitude === "number" && typeof obj.longitude === "number") {
       return `${obj.latitude}, ${obj.longitude}`;
@@ -101,8 +112,11 @@ function typesOf(node: Record<string, unknown>): string[] {
  * not that was true. Values are now read from the live page, and the
  * coordinates are surfaced verbatim so a mismatch with the street address can
  * be seen rather than asserted away.
+ *
+ * Exported so the parsing rules — in particular a locality-only address for a
+ * service-area business — can be tested without a network round trip.
  */
-function inspectBusinessSchema(nodes: unknown[]): BusinessSchema {
+export function inspectBusinessSchema(nodes: unknown[]): BusinessSchema {
   const businessNode = nodes.find((node) => {
     if (!node || typeof node !== "object") return false;
     return typesOf(node as Record<string, unknown>).some(
@@ -116,6 +130,7 @@ function inspectBusinessSchema(nodes: unknown[]): BusinessSchema {
       fields: {},
       missing: [...REQUIRED_BUSINESS_FIELDS],
       areaServedNames: [],
+      hasStreetAddress: false,
     };
   }
 
@@ -131,6 +146,20 @@ function inspectBusinessSchema(nodes: unknown[]): BusinessSchema {
     }
   }
 
+  // Read regardless of whether it is present, so coordinates are still reported
+  // if a future change adds them — they are just not demanded.
+  const coordinates = describeField(businessNode.geo);
+  if (coordinates) {
+    fields.geo = coordinates;
+  }
+
+  const addressNode = businessNode.address;
+  const hasStreetAddress =
+    Boolean(addressNode) &&
+    typeof addressNode === "object" &&
+    typeof (addressNode as Record<string, unknown>).streetAddress === "string" &&
+    Boolean((addressNode as Record<string, unknown>).streetAddress);
+
   const areaServed = Array.isArray(businessNode.areaServed) ? businessNode.areaServed : [];
   const areaServedNames = areaServed
     .map((entry) =>
@@ -140,7 +169,7 @@ function inspectBusinessSchema(nodes: unknown[]): BusinessSchema {
     )
     .filter(Boolean);
 
-  return { present: true, fields, missing, areaServedNames };
+  return { present: true, fields, missing, areaServedNames, hasStreetAddress };
 }
 
 export async function runWednesdayTechnicalSkill(): Promise<SkillResult> {
@@ -283,9 +312,17 @@ export async function runWednesdayTechnicalSkill(): Promise<SkillResult> {
       }
       if (schema.fields.geo) {
         // Reported verbatim rather than declared "exact". Nothing in this check
-        // geocodes the street address, so it cannot confirm the two agree.
+        // geocodes an address, so it cannot confirm the two agree.
         findings.push(
-          `Schema coordinates: ${schema.fields.geo} — compare against the street address above, which this check cannot geocode.`
+          schema.hasStreetAddress
+            ? `Schema coordinates: ${schema.fields.geo} — compare against the street address above, which this check cannot geocode.`
+            : `Schema coordinates: ${schema.fields.geo} — no street address is published, so treat these as a service-area centre rather than a premises.`
+        );
+      } else if (!schema.hasStreetAddress) {
+        // Expected, not a defect: a service-area business has no premises to
+        // point at, so saying so keeps the absence from looking like a gap.
+        findings.push(
+          "Schema location: city and ZIP only, no street address or coordinates — expected for a service-area business with no storefront."
         );
       }
 

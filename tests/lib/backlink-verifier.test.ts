@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyServedPage, detectBrandLinkRel } from "@/lib/integrations/backlink-verifier";
+import { classifyServedPage, describeServedPage, detectBrandLinkRel } from "@/lib/integrations/backlink-verifier";
 
 /**
  * Covers the link-type reading that decides whether a backlink passes ranking
@@ -96,5 +96,28 @@ describe("classifyServedPage", () => {
     expect(classifyServedPage("<title>Client Challenge</title><p>EVR Construction</p>")).toBe(
       "Blocked"
     );
+  });
+});
+
+describe("describeServedPage", () => {
+  it("names a robot check as the reason the page could not be read", () => {
+    // Bizapedia serves its full listing to a browser and a challenge to some
+    // automated requests. The report must say which, so a live listing behind a
+    // gate is never described as a broken one.
+    expect(describeServedPage("<title>Client Challenge</title>").blockedReason).toBe(
+      "robot-check"
+    );
+  });
+
+  it("names an unreadable page as the reason when no gate was served", () => {
+    expect(describeServedPage("<html><body>Please accept cookies</body></html>").blockedReason).toBe(
+      "no-listing"
+    );
+  });
+
+  it("gives no reason when the listing was actually read", () => {
+    const verdict = describeServedPage("<h1>EVR Construction LLC</h1>");
+    expect(verdict.status).toBe("Active");
+    expect(verdict.blockedReason).toBeUndefined();
   });
 });

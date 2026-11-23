@@ -52,9 +52,13 @@ const localBusinessJsonLd = {
       language: "es",
     },
   ],
+  // City and ZIP only — deliberately no streetAddress. This is a service-area
+  // business with no public storefront, and its registered address is the
+  // owner's private residence, so publishing it would disclose where he lives
+  // for no search benefit. Locality + region + ZIP still give search engines
+  // the geographic context.
   address: {
     "@type": "PostalAddress",
-    streetAddress: "3417 Mynatt Rd",
     addressLocality: "Knoxville",
     addressRegion: "TN",
     postalCode: "37918",
@@ -65,11 +69,10 @@ const localBusinessJsonLd = {
     "https://www.yelp.com/biz/evr-construction-knoxville",
     "https://maps.google.com/?q=EVR+Construction+LLC+Knoxville+TN",
   ],
-  geo: {
-    "@type": "GeoCoordinates",
-    latitude: 35.9606,
-    longitude: -83.9207,
-  },
+  // Deliberately no `geo`. Schema.org does not require it, and coordinates would
+  // assert a premises this business does not have — the previous value was
+  // downtown Knoxville, roughly 10 km from the residential address it sat next
+  // to. `areaServed` states the real coverage honestly.
   openingHoursSpecification: [
     {
       "@type": "OpeningHoursSpecification",

@@ -6,6 +6,8 @@ export interface VerificationResult {
   type: "DoFollow" | "NoFollow";
   httpStatus: number;
   lastVerified: string;
+  /** Why a blocked page could not be read, so the report can say which it was. */
+  blockedReason?: "robot-check" | "no-listing";
 }
 
 function isSafePublicUrl(urlString: string): boolean {
@@ -85,10 +87,29 @@ function mentionsThisBusiness(html: string): boolean {
  * state the listing is gone.
  */
 export function classifyServedPage(html: string): "Active" | "Blocked" {
-  // A challenge shell can carry the business name without being the listing.
-  if (looksLikeBotChallenge(html)) return "Blocked";
+  return describeServedPage(html).status;
+}
 
-  return mentionsThisBusiness(html) ? "Active" : "Blocked";
+/**
+ * Classify a served page and say why, when it could not be read.
+ *
+ * The distinction matters in the report: a robot check means the directory
+ * deliberately withheld the page from an automated request, which says nothing
+ * about the listing. "Served a page without the listing" is the other case.
+ * Both are Blocked — neither is evidence the listing was removed.
+ */
+export function describeServedPage(html: string): {
+  status: "Active" | "Blocked";
+  blockedReason?: "robot-check" | "no-listing";
+} {
+  // A challenge shell can carry the business name without being the listing.
+  if (looksLikeBotChallenge(html)) {
+    return { status: "Blocked", blockedReason: "robot-check" };
+  }
+
+  return mentionsThisBusiness(html)
+    ? { status: "Active" }
+    : { status: "Blocked", blockedReason: "no-listing" };
 }
 
 /** `rel` values that tell search engines not to pass ranking credit. */
@@ -202,11 +223,14 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
         brandLinkRel === "NoFollow" ||
         (brandLinkRel === null && directoryLinkType(isYelp, isBbb, isHouzz) === "NoFollow");
 
+      const verdict = describeServedPage(html);
+
       return {
-        status: classifyServedPage(html),
+        status: verdict.status,
         type: isNoFollow ? "NoFollow" : "DoFollow",
         httpStatus: res.status,
         lastVerified: today,
+        ...(verdict.blockedReason ? { blockedReason: verdict.blockedReason } : {}),
       };
     }
 
@@ -218,6 +242,7 @@ export async function verifyBacklinkUrl(sourceUrl: string): Promise<Verification
         type: directoryLinkType(isYelp, isBbb, isHouzz),
         httpStatus: res.status,
         lastVerified: today,
+        blockedReason: "robot-check",
       };
     }
 

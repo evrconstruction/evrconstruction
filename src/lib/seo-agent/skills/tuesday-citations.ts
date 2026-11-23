@@ -1,10 +1,30 @@
 import { AgentDirective, AgentRunLog } from "../types";
 import { SkillResult } from "./monday-keywords";
 import { adminDb } from "@/lib/firebase-admin";
-import { verifyBacklinkUrl } from "@/lib/integrations/backlink-verifier";
+import {
+  verifyBacklinkUrl,
+  type VerificationResult,
+} from "@/lib/integrations/backlink-verifier";
 import { SKILL_NAMES } from "../skill-names";
 
 const CITATION_DIRECTIVE_PREFIX = "dir-cit-lost-";
+
+/**
+ * Why a citation could not be resolved, in the words the report shows.
+ *
+ * A robot check and an unreadable page are different situations and used to read
+ * identically ("the directory did not serve the listing"), which made a live
+ * listing behind a bot gate look like a defect worth chasing.
+ */
+function describeUnverified(verification: VerificationResult): string {
+  if (verification.status !== "Blocked") {
+    return `the request failed (HTTP ${verification.httpStatus})`;
+  }
+  if (verification.blockedReason === "robot-check") {
+    return `a robot check blocked the request (HTTP ${verification.httpStatus}), so the listing could not be read`;
+  }
+  return `the directory served a page without the listing (HTTP ${verification.httpStatus})`;
+}
 
 export async function runTuesdayCitationsSkill(): Promise<SkillResult> {
   const start = Date.now();
@@ -59,11 +79,7 @@ export async function runTuesdayCitationsSkill(): Promise<SkillResult> {
     }
 
     unverifiedCount++;
-    const reason =
-      verification.status === "Blocked"
-        ? `the directory did not serve the listing (HTTP ${verification.httpStatus})`
-        : `the request failed (HTTP ${verification.httpStatus})`;
-    findings.push(`${title}: Could not be checked — ${reason}. Listing status unknown.`);
+    findings.push(`${title}: Could not be checked — ${describeUnverified(verification)}. Listing status unknown.`);
   }
 
   if (snapshot.docs.length === 0) {
