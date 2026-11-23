@@ -15,7 +15,7 @@ function page(overrides: Partial<PageFacts> = {}): PageFacts {
     title: "Deck Building in Knoxville | EVR Construction",
     canonical: PAGE_URL,
     h1Count: 1,
-    hasDescription: true,
+    description: "Custom decks built to last in Knoxville, TN.",
     internalLinks: [],
     ...overrides,
   };
@@ -41,7 +41,7 @@ describe("extractPageFacts", () => {
     expect(facts.title).toBe("Deck Building in Knoxville");
     expect(facts.canonical).toBe(PAGE_URL);
     expect(facts.h1Count).toBe(1);
-    expect(facts.hasDescription).toBe(true);
+    expect(facts.description).toBe("Custom decks built to last.");
     // Same-page, external and non-http links are not crawl targets, and the
     // repeated contact link is counted once.
     expect(facts.internalLinks).toEqual(["https://evrconstructions.com/contact"]);
@@ -58,7 +58,7 @@ describe("extractPageFacts", () => {
     expect(facts.title).toBe("");
     expect(facts.canonical).toBeNull();
     expect(facts.h1Count).toBe(0);
-    expect(facts.hasDescription).toBe(false);
+    expect(facts.description).toBe("");
   });
 });
 
@@ -123,7 +123,7 @@ describe("analyzeCrawl", () => {
 
   it("treats a non-200 page as unreachable and checks nothing else about it", () => {
     const findings = analyzeCrawl(
-      [page({ status: 500, title: "", canonical: null, h1Count: 0, hasDescription: false })],
+      [page({ status: 500, title: "", canonical: null, h1Count: 0, description: "" })],
       new Map()
     );
 
@@ -137,6 +137,14 @@ describe("analyzeCrawl", () => {
     );
 
     expect(findings[0].description).toContain("timeout");
+  });
+
+  it("flags a description Google would cut off, and leaves a normal one alone", () => {
+    const long = analyzeCrawl([page({ description: "x".repeat(190) })], new Map());
+    expect(long.map((f) => f.id)).toEqual(["dir-audit-description-long-projects-decks"]);
+
+    const fine = analyzeCrawl([page({ description: "x".repeat(160) })], new Map());
+    expect(fine).toEqual([]);
   });
 
   it("gives each finding a stable id so a rerun updates rather than duplicates", () => {

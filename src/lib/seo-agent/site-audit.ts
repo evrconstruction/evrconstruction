@@ -16,8 +16,8 @@ export interface PageFacts {
   canonical: string | null;
   /** How many <h1> elements the page has. Exactly one is correct. */
   h1Count: number;
-  /** Whether the page carries a meta description. */
-  hasDescription: boolean;
+  /** The page's meta description, or an empty string when it declares none. */
+  description: string;
   /** Internal links found on the page, as absolute URLs. */
   internalLinks: string[];
   /** Set when the page could not be fetched at all. */
@@ -34,6 +34,14 @@ export interface AuditFinding {
 
 const MAX_TITLE_LENGTH = 60;
 const MIN_TITLE_LENGTH = 15;
+
+/**
+ * Roughly where Google stops showing a meta description and writes its own.
+ *
+ * It is a pixel limit, not a character count, so this is a guide rather than a
+ * guarantee — but a description well over it is cut off in every variant.
+ */
+const MAX_DESCRIPTION_LENGTH = 160;
 
 function decodeEntities(value: string): string {
   return value
@@ -96,11 +104,10 @@ export function extractPageFacts(path: string, url: string, status: number, html
   );
   const canonical = canonicalTag?.get("href")?.trim() || null;
 
-  const hasDescription = tagsWithAttributes(html, "meta").some(
-    (attributes) =>
-      (attributes.get("name") ?? "").toLowerCase() === "description" &&
-      Boolean(attributes.get("content")?.trim())
+  const descriptionTag = tagsWithAttributes(html, "meta").find(
+    (attributes) => (attributes.get("name") ?? "").toLowerCase() === "description"
   );
+  const description = decodeEntities(descriptionTag?.get("content") ?? "");
 
   const h1Count = (html.match(/<h1[\s>]/gi) || []).length;
 
@@ -130,7 +137,7 @@ export function extractPageFacts(path: string, url: string, status: number, html
     title: titleMatch ? decodeEntities(titleMatch[1].replace(/\s+/g, " ")) : "",
     canonical,
     h1Count,
-    hasDescription,
+    description,
     internalLinks,
   };
 }
@@ -243,11 +250,20 @@ export function analyzeCrawl(
       });
     }
 
-    if (!page.hasDescription) {
+    if (!page.description) {
       findings.push({
         id: `dir-audit-description-missing-${slug}`,
         title: `No meta description: ${page.path || "/"}`,
         description: `${page.path || "/"} has no meta description, so Google writes the snippet from page text instead.`,
+        priority: "Low",
+      });
+    } else if (page.description.length > MAX_DESCRIPTION_LENGTH) {
+      findings.push({
+        id: `dir-audit-description-long-${slug}`,
+        title: `Meta description is too long: ${page.path || "/"}`,
+        description:
+          `The meta description is ${page.description.length} characters, so Google will cut it off around ` +
+          `${MAX_DESCRIPTION_LENGTH} and may write its own snippet. Current description: "${page.description}".`,
         priority: "Low",
       });
     }
@@ -323,7 +339,7 @@ async function fetchPage(path: string): Promise<PageFacts> {
       title: "",
       canonical: null,
       h1Count: 0,
-      hasDescription: false,
+      description: "",
       internalLinks: [],
       error: err instanceof Error ? err.message : "fetch failed",
     };

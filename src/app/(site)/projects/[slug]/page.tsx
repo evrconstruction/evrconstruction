@@ -37,13 +37,14 @@ export async function generateMetadata({ params }: ServicePageProps): Promise<Me
 
   return {
     title: `${service.title} Projects`,
-    description: service.summary,
+    // The summary is page copy and runs long, so the snippet uses its own text.
+    description: service.metaDescription,
     alternates: {
       canonical: pageUrl,
     },
     openGraph: {
       title: `${service.title} Projects | EVR Construction LLC`,
-      description: service.summary,
+      description: service.metaDescription,
       url: pageUrl,
       images: [
         {

@@ -6,6 +6,8 @@ export const SERVICES = [
     image: "/images/deck-4.jpg",
     summary:
       "We design and build durable decks that extend your living space, using careful framing and quality materials for a place to relax, gather, and enjoy the outdoors. View our collection of deck projects.",
+    metaDescription:
+      "Custom deck design and construction in Knoxville and East Tennessee — careful framing, quality materials, and outdoor living space built to last.",
     intro:
       "A well-built deck creates more room to enjoy your home. EVR Construction plans each deck around your space, your routine, and the details that make outdoor living comfortable.",
     gallery: [
@@ -60,6 +62,8 @@ export const SERVICES = [
     image: "/images/gazebo-1.jpg",
     summary:
       "A gazebo creates a shaded, welcoming place to gather outdoors. We build each structure with thoughtful details and dependable craftsmanship. View our collection of gazebo projects.",
+    metaDescription:
+      "Custom gazebo construction in Knoxville, TN — shaded backyard gathering spaces built with solid framing and a finished roof.",
     intro:
       "A gazebo gives the backyard a defined place to gather, relax, and enjoy the seasons. We build each structure with a focus on stability, proportion, and finish quality.",
     gallery: [
@@ -78,6 +82,8 @@ export const SERVICES = [
     image: "/images/restoration-1.jpg",
     summary:
       "We restore worn decks and gazebos through repairs, board replacement, sanding, and sealing, bringing outdoor spaces back to life. View our collection of restoration projects.",
+    metaDescription:
+      "Deck and gazebo restoration in Knoxville, TN — repairs, board replacement, sanding, and sealing that bring outdoor spaces back to life.",
     intro:
       "Outdoor structures can often be renewed instead of replaced. We inspect the existing work, repair what needs attention, and refinish the surfaces so the space can be enjoyed again.",
     gallery: [
@@ -108,6 +114,8 @@ export const SERVICES = [
     image: "/images/remodel-1.jpg",
     summary:
       "From focused updates to larger improvements, we approach remodeling with clear planning, skilled construction, and care for your home. View our collection of remodeling projects.",
+    metaDescription:
+      "Home remodeling in Knoxville and East Tennessee — clear planning, skilled construction, and careful work on every improvement.",
     intro:
       "Remodeling works best when the plan is clear from the beginning. We coordinate the details, protect the surrounding home, and build improvements that fit the way you live.",
     gallery: [
@@ -138,6 +146,8 @@ export const SERVICES = [
     image: "/images/carpentry-1.jpg",
     summary:
       "Our carpentry work combines practical function with clean, lasting detail, from framing and built-ins to custom woodwork. View our collection of carpentry projects.",
+    metaDescription:
+      "Custom carpentry in Knoxville, TN — framing, built-ins, and woodwork that pair practical function with clean, lasting detail.",
     intro:
       "Carpentry is at the center of everything we build. From structural framing to custom details, we measure carefully, work cleanly, and make the finished piece feel like it belongs.",
     gallery: [
@@ -174,6 +184,8 @@ export const SERVICES = [
     image: "/images/project-1.jpg",
     summary:
       "Patios and pergolas add shade, structure, and more room to enjoy the outdoors. We build each space around your home and the way you live. View our collection of patio and pergola projects.",
+    metaDescription:
+      "Patio and pergola construction in Knoxville, TN — shade, structure, and outdoor living space built around how you use your home.",
     intro:
       "Patios and pergolas shape the way you use an outdoor space. We build practical shade and gathering areas that complement the home and make the backyard more inviting.",
     gallery: [
