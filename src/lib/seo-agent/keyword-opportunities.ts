@@ -246,6 +246,24 @@ function buildNoDemandDirective(targetCount: number, timestamp: string): AgentDi
 }
 
 /**
+ * Headline counts for the run summary.
+ *
+ * Exported so the summary and the findings are built from the same numbers. The
+ * summary used to count every query at position ≤10, including competitors and
+ * misspellings ("evr", "ev construction"), while the findings counted only our
+ * own — so the summary claimed six top-ten rankings when the list below it
+ * named three.
+ */
+export interface KeywordOpportunityStats {
+  /** Tracked targets Google reported a position for. */
+  reportedCount: number;
+  /** Reported queries of ours on page 1 — the same set the finding counts. */
+  pageOneCount: number;
+  /** Tracked targets Google never reported any impressions for. */
+  noDemandCount: number;
+}
+
+/**
  * Turn Search Console data into directives worth acting on.
  *
  * Everything here is derived from queries Google actually reported. Targets
@@ -255,6 +273,7 @@ function buildNoDemandDirective(targetCount: number, timestamp: string): AgentDi
 export function analyzeKeywordOpportunities(keywords: GSCKeywordItem[]): {
   directives: AgentDirective[];
   findings: string[];
+  stats: KeywordOpportunityStats;
 } {
   const timestamp = new Date().toISOString();
   const reported = keywords.filter((item) => item.position > 0).map(toReportedQuery);
@@ -352,5 +371,13 @@ export function analyzeKeywordOpportunities(keywords: GSCKeywordItem[]): {
     findings.push("Search Console reported no queries for this period.");
   }
 
-  return { directives, findings };
+  return {
+    directives,
+    findings,
+    stats: {
+      reportedCount: reported.length,
+      pageOneCount: pageOne.length,
+      noDemandCount: targetsWithoutDemand.length,
+    },
+  };
 }

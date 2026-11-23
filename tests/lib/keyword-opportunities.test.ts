@@ -135,9 +135,16 @@ describe("isBrandQuery", () => {
 });
 
 describe("analyzeKeywordOpportunities — real data", () => {
-  const { directives, findings } = analyzeKeywordOpportunities(REAL_DATA);
+  const { directives, findings, stats } = analyzeKeywordOpportunities(REAL_DATA);
   const titles = directives.map((d) => d.title);
   const find = (fragment: string) => directives.find((d) => d.title.includes(fragment));
+
+  it("counts page-1 rankings the same way the findings do", () => {
+    // "ever construction" (#6) is another company, so it must not inflate our
+    // own top-ten count. The summary and the finding used to disagree here.
+    expect(stats.pageOneCount).toBe(1);
+    expect(findings).toContain("Page-1 rankings: 1 query ranking in the top 10.");
+  });
 
   it("never tells the user a target is waiting to be indexed", () => {
     for (const directive of directives) {

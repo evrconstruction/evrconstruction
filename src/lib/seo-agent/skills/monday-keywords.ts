@@ -26,12 +26,7 @@ export async function runMondayKeywordsSkill(): Promise<SkillResult> {
   const gscData = await fetchSearchConsoleKeywords();
   const keywords = gscData.keywords || [];
 
-  const { directives, findings } = analyzeKeywordOpportunities(keywords);
-
-  const reportedCount = keywords.filter((k) => k.position > 0).length;
-  const pageOneCount = keywords.filter(
-    (k) => k.position > 0 && k.position <= 10
-  ).length;
+  const { directives, findings, stats } = analyzeKeywordOpportunities(keywords);
 
   const runLog: AgentRunLog = {
     id: `run-${Date.now()}-mon`,
@@ -40,7 +35,10 @@ export async function runMondayKeywordsSkill(): Promise<SkillResult> {
     skillName: SKILL_NAME,
     status: "Success",
     durationMs: Date.now() - start,
-    summary: `Reviewed ${keywords.length} tracked targets against ${reportedCount} queries Google reported. ${pageOneCount} ranking in the top 10.`,
+    // Counts come from the analysis, not recomputed here: a local count also
+    // picked up competitor and misspelling queries, so the summary and the
+    // findings below it disagreed.
+    summary: `Reviewed ${keywords.length} tracked targets against ${stats.reportedCount} queries Google reported. ${stats.pageOneCount} of our own queries ranking in the top 10.`,
     findings,
   };
 
