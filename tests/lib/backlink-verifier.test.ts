@@ -65,6 +65,26 @@ describe("detectBrandLinkRel", () => {
     expect(detectBrandLinkRel(html)).toBe("DoFollow");
   });
 
+  it("does not treat the similar singular domain as this business", () => {
+    // evrconstruction.com (singular) belongs to an unrelated company registered in
+    // 2012 in Kancheepuram, India. Reading its rel would report that company's link
+    // as our own verified backlink type.
+    const html = `<a href="https://evrconstruction.com" rel="nofollow">EVR Construction</a>`;
+
+    expect(detectBrandLinkRel(html)).toBeNull();
+  });
+
+  it("still reads our own link when a namesake link sits on the same page", () => {
+    // The regression that matters: presence of the namesake anchor must not mask
+    // the real link, nor lend it the namesake's rel.
+    const html = `
+      <a href="https://evrconstruction.com" rel="nofollow">EVR Construction</a>
+      <a href="https://evrconstructions.com/projects">EVR Construction LLC</a>
+    `;
+
+    expect(detectBrandLinkRel(html)).toBe("DoFollow");
+  });
+
   it("handles single-quoted attributes", () => {
     const html = `<a class='brand' href='https://evrconstructions.com' rel='nofollow noopener'>x</a>`;
 

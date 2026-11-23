@@ -52,8 +52,16 @@ function looksLikeBotChallenge(html: string): boolean {
   );
 }
 
-/** Hosts that identify a link as pointing back at this business. */
-const BRAND_HOSTNAMES = ["evrconstructions.com", "evrconstruction.com"];
+/**
+ * Hosts that identify a link as pointing back at this business.
+ *
+ * Only the plural domain belongs to this business. `evrconstruction.com` (singular)
+ * was listed here until 2026-11-23 and is a different company entirely — registered
+ * in 2012, served from different nameservers, and publishing an unrelated contractor
+ * site in Kancheepuram, India. Treating it as ours would read that company's anchor
+ * `rel` and report it as our own verified link type.
+ */
+const BRAND_HOSTNAMES = ["evrconstructions.com"];
 
 /**
  * Text that identifies a served page as this business's own listing.
