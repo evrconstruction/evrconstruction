@@ -98,8 +98,32 @@ describe("detectBrandLinkRel", () => {
  * which raised a High directive telling the owner to rebuild a live listing.
  */
 describe("classifyServedPage", () => {
-  it("reports a served listing that names the business as active", () => {
-    expect(classifyServedPage("<h1>EVR Construction LLC</h1>")).toBe("Active");
+  it("reports a served listing that names the business and its locality as active", () => {
+    expect(
+      classifyServedPage("<h1>EVR Construction LLC</h1><p>Knoxville, TN</p>")
+    ).toBe("Active");
+  });
+
+  it("accepts a link to our own domain as proof it is our listing", () => {
+    expect(
+      classifyServedPage(
+        '<h1>EVR Construction</h1><a href="https://evrconstructions.com">x</a>'
+      )
+    ).toBe("Active");
+  });
+
+  it("does not read an identical namesake page in another state as our listing", () => {
+    // An unrelated EVR Construction in Virginia renders the same name. Calling it
+    // Active tells the owner a listing was verified when it is not ours.
+    expect(
+      classifyServedPage("<h1>EVR Construction</h1><p>Richmond, VA</p>")
+    ).toBe("Blocked");
+  });
+
+  it("does not read the Indian namesake's page as our listing", () => {
+    expect(
+      classifyServedPage("<h1>EVR Construction</h1><p>Kancheepuram, India</p>")
+    ).toBe("Blocked");
   });
 
   it("does not call a page without the business missing", () => {
@@ -136,7 +160,7 @@ describe("describeServedPage", () => {
   });
 
   it("gives no reason when the listing was actually read", () => {
-    const verdict = describeServedPage("<h1>EVR Construction LLC</h1>");
+    const verdict = describeServedPage("<h1>EVR Construction LLC</h1><p>Knoxville, TN</p>");
     expect(verdict.status).toBe("Active");
     expect(verdict.blockedReason).toBeUndefined();
   });

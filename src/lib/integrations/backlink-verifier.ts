@@ -64,23 +64,48 @@ function looksLikeBotChallenge(html: string): boolean {
 const BRAND_HOSTNAMES = ["evrconstructions.com"];
 
 /**
- * Text that identifies a served page as this business's own listing.
+ * Name variants, none of which identifies the business on its own.
  *
- * "henry ramirez" is the name published on the existing directory profiles, so a
- * listing that renders the owner's name is still recognisably ours.
+ * "EVR Construction" is a shared trade name: unrelated companies in Virginia and
+ * in Kancheepuram, India both publish it. Matching the bare name reports their
+ * pages as our listing, which is a false "Active" — the one verdict that tells the
+ * owner a listing was verified.
  */
-const BRAND_MENTIONS = [
-  "evr construction",
-  "evrconstruction",
+const BRAND_NAME_TOKENS = ["evr construction", "evrconstruction"];
+
+/**
+ * Details only this business publishes: its own domain, its locality, and the
+ * owner's name as it appears on the directory profiles. A page has to carry one
+ * of these as well as a name token before it is read as ours. "tn" is left out
+ * deliberately — two letters collide with too much unrelated markup.
+ */
+const BUSINESS_LOCATION_TOKENS = [
   "evrconstructions.com",
   "evrconstruction.llc",
+  "knoxville",
+  "tennessee",
   "henry ramirez",
 ];
 
+function containsAny(haystack: string, needles: string[]): boolean {
+  return needles.some((needle) => haystack.includes(needle));
+}
+
+/**
+ * True when a served page is this business's own listing.
+ *
+ * A namesake page is indistinguishable from ours on the name alone, so the
+ * locality or owner token carries the decision. A listing that renders neither is
+ * reported as unreadable rather than confirmed active — the same choice this
+ * module makes everywhere else: never claim a listing was verified unseen.
+ */
 function mentionsThisBusiness(html: string): boolean {
   const lower = html.toLowerCase();
 
-  return BRAND_MENTIONS.some((mention) => lower.includes(mention));
+  return (
+    containsAny(lower, BRAND_NAME_TOKENS) &&
+    containsAny(lower, BUSINESS_LOCATION_TOKENS)
+  );
 }
 
 /**
